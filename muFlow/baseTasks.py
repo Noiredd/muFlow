@@ -53,7 +53,6 @@ class BaseProcessor(object):
         raise ParseArgsException(self.name, param)
       setattr(self, arg_name, c_arg)
   
-  
   def setup(self, **kwargs):
     #non-parallelized user code
     pass
