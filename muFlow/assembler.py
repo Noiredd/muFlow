@@ -26,3 +26,36 @@ class Assembler(object):
       for name, obj in inspect.getmembers(tmod, inspect.isclass):
         if issubclass(obj, baseTasks.BaseProcessor) and not obj==baseTasks.BaseProcessor:
           self.tasks[obj.name] = obj
+  
+  def constructTask(self, text):
+    #parses a given text (line) and attempts to construct a task from it
+    args = text.split()
+    task_name = args[0]
+    task_args = args[1:]
+    if task_name not in self.tasks.keys():
+      raise ConstructException(task_name, 'no such task')
+    return self.tasks[task_name](*task_args)
+  
+  def assembleFromText(self, lines):
+    flow = FlowObject()
+    for line in lines:
+      task = self.constructTask(line)
+      flow.append(task)
+    return flow
+
+class FlowObject(object):
+  def __init__(self):
+    self.tasks = [] #tasks are executed in order
+  
+  def append(self, task):
+    self.tasks.append(task)
+  
+  def execute(self, item):
+    for task in self.tasks:
+      item = task.action(item)
+    return item
+
+class ConstructException(baseTasks.muException):
+  def __init__(self, taskname, text):
+    self.message = text + ' (' + taskname + ')'
+    super(ConstructException, self).__init__(self.message)

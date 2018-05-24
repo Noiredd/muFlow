@@ -2,6 +2,7 @@
 import sys
 if sys.version_info < (3,0):
   from exceptions import Exception
+muException = Exception
 #####Python 2 and 3 compatibility#####
 
 class BaseProcessor(object):
@@ -51,7 +52,7 @@ class BaseProcessor(object):
       except ValueError:
         raise ParseArgsException(self.name, param)
       setattr(self, arg_name, c_arg)
-    
+  
   
   def setup(self, **kwargs):
     #non-parallelized user code
@@ -62,17 +63,17 @@ class BaseProcessor(object):
     pass
 
 
-class BadParamException(Exception):
+class BadParamException(muException):
   def __init__(self, taskname, param, text):
     self.message = param[0] + ' ' + text + ' (' + taskname + ')'
     super(BadParamException, self).__init__(self.message)
 
-class ArgsListException(Exception):
+class ArgsListException(muException):
   def __init__(self, taskname, text):
     self.message = text + ' (' + taskname + ')'
     super(ArgsListException, self).__init__(self.message)
 
-class ParseArgsException(Exception):
+class ParseArgsException(muException):
   def __init__(self, taskname, param):
     def s(t):
       return str(t).split("'")[1]
