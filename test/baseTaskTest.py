@@ -8,17 +8,23 @@ class TestTaskParams(unittest.TestCase):
     class BadParamTask(bt.BaseProcessor):
       params = [('param')]
     with self.assertRaises(bt.BadParamException):
-      task = BadParamTask('value')
+      BadParamTask.validateParams()
   def test_paramName(self):
     class BadParamTask(bt.BaseProcessor):
       params = [('name',str)]
     with self.assertRaises(bt.BadParamException):
-      task = BadParamTask('value')
+      BadParamTask.validateParams()
   def test_paramType(self):
     class BadParamTask(bt.BaseProcessor):
       params = [('param','str')]
     with self.assertRaises(bt.BadParamException):
-      task = BadParamTask('value')
+      BadParamTask.validateParams()
+  def test_success(self):
+    class GoodParamTask(bt.BaseProcessor):
+      params = [('param',str)]
+    GoodParamTask.validateParams()
+    task = GoodParamTask('value')
+    self.assertIsInstance(task, GoodParamTask)
 
 class TestParsing(unittest.TestCase):
   class SimpleTask(bt.BaseProcessor):

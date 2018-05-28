@@ -25,7 +25,12 @@ class Assembler(object):
       tmod = importlib.import_module(module)
       for name, obj in inspect.getmembers(tmod, inspect.isclass):
         if issubclass(obj, baseTasks.BaseProcessor) and not obj==baseTasks.BaseProcessor:
-          self.tasks[obj.name] = obj
+          try:
+            obj.validateParams()
+          except baseTasks.BadParamException as e:
+            print(e.message, '- skipping import')
+          else:
+            self.tasks[obj.name] = obj
   
   def constructTask(self, text):
     #parses a given text (line) and attempts to construct a task from it

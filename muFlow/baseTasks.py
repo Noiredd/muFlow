@@ -12,29 +12,30 @@ class BaseProcessor(object):
   params = []
   
   def __init__(self, *args):
-    self.__validateParams()
     self.__parseArgs(*args)
   
-  def __validateParams(self):
+  @classmethod
+  def validateParams(cls):
     #make sure params have 2 elements
-    for param in self.params:
+    for param in cls.params:
       if len(param) != 2:
-        raise BadParamException(self.name, param, 'is incorrect format')
+        raise BadParamException(cls.name, param, 'is incorrect format')
     #make sure the class itself uses no forbidden words in its params
     #(otherwise, parsing args might result in overwriting some members)
     forbidden = BaseProcessor.__dict__.keys()
-    for param in self.params:
+    for param in cls.params:
       if param[0] in forbidden:
-        raise BadParamException(self.name, param, 'overrides a class member')
+        raise BadParamException(cls.name, param, 'overrides a class member')
     #make sure the params' 1-nd elements are callable on a string
-    for param in self.params:
+    for param in cls.params:
       try:
         param[1]('test')
       except TypeError:
-        raise BadParamException(self.name, param, 'is not callable')
+        raise BadParamException(cls.name, param, 'is not callable')
       except ValueError:
         #don't care about being unable to actually convert the string
         pass
+    #nothing needs to be returned - if this completes, we're good
   
   def __parseArgs(self, *args):
     #make sure we get the right number of arguments
