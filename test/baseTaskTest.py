@@ -4,6 +4,12 @@ sys.path.append('../muFlow')
 import baseTasks as bt
 
 class TestTaskParams(unittest.TestCase):
+  def test_noParams(self):
+    class NoParamTask(bt.BaseProcessor):
+      params = []
+    NoParamTask.validateParams()
+    task = NoParamTask()
+    self.assertIsInstance(task, NoParamTask)
   def test_paramFormat(self):
     class BadParamTask(bt.BaseProcessor):
       params = [('param')]
@@ -25,6 +31,7 @@ class TestTaskParams(unittest.TestCase):
     GoodParamTask.validateParams()
     task = GoodParamTask('value')
     self.assertIsInstance(task, GoodParamTask)
+    a = task.param  #test that the param can be reached
 
 class TestParsing(unittest.TestCase):
   class SimpleTask(bt.BaseProcessor):
