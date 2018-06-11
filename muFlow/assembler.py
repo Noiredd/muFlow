@@ -51,14 +51,31 @@ class Assembler(object):
 class FlowObject(object):
   def __init__(self):
     self.tasks = [] #tasks are executed in order
+    self.scope = {} #place where the intermediate results are contained
   
   def append(self, task):
+    #append the task to the execution list
+    #first check whether the scope contains items that this task would request
+    requests = task.getInputs()
+    for request in requests:
+      if request not in self.scope.keys():
+        raise ConstructException(task.name, 'requests "' + request + '" which is not in scope yet')
+    #if this has passed, update the scope and append the task
+    for output in task.getOutputs():
+      self.scope[output] = None
     self.tasks.append(task)
   
-  def execute(self, item):
+  def execute(self):
+    #execute the task list in order
     for task in self.tasks:
-      item = task.action(item)
-    return item
+      #query each task for its required inputs and retrieve their values from the scope
+      inputs = [self.scope[i] for i in task.getInputs()]
+      #feed them to the task and run it
+      results = task.action(*inputs) if inputs is not [] else task.action()
+      #pack the output back to the scope
+      for result, key in zip(results, task.getOutputs()):
+        self.scope[key] = result
+    return self.scope
 
 class ConstructException(baseTasks.muException):
   def __init__(self, taskname, text):

@@ -33,6 +33,98 @@ class TestTaskParams(unittest.TestCase):
     self.assertIsInstance(task, GoodParamTask)
     a = task.param  #test that the param can be reached
 
+class TestTaskInputs(unittest.TestCase):
+  def test_defaultNoInput(self):
+    class Task0(bt.BaseProcessor):
+      def action(self):
+        pass
+    t0 = Task0()
+    self.assertEqual(len(t0.inputs), 0)
+  def test_defaultInput1(self):
+    class Task1(bt.BaseProcessor):
+      def action(self, item):
+        pass
+    t1 = Task1()
+    self.assertEqual(len(t1.inputs), 1)
+    self.assertEqual(t1.inputs[0], 'item')
+  def test_defaultInput2(self):
+    class Task2(bt.BaseProcessor):
+      def action(self, name, image):
+        pass
+    t2 = Task2()
+    self.assertEqual(len(t2.inputs), 2)
+    self.assertEqual(t2.inputs[0], 'name')
+    self.assertEqual(t2.inputs[1], 'image')
+
+class TestTaskOutputs(unittest.TestCase):
+  def test_defaultNoOutput(self):
+    class Task0(bt.BaseProcessor):
+      def result(self):
+        pass
+    t0 = Task0()
+    self.assertEqual(len(t0.outputs), 0)
+  def test_defaultOutput1(self):
+    class Task1(bt.BaseProcessor):
+      def result(self, item):
+        pass
+    t1 = Task1()
+    self.assertEqual(len(t1.outputs), 1)
+    self.assertEqual(t1.outputs[0], 'item')
+  def test_defaultOutput2(self):
+    class Task2(bt.BaseProcessor):
+      def result(self, name, image):
+        pass
+    t2 = Task2()
+    self.assertEqual(len(t2.outputs), 2)
+    self.assertEqual(t2.outputs[0], 'name')
+    self.assertEqual(t2.outputs[1], 'image')
+
+class TestTaskInputOutput(unittest.TestCase):
+  def test_one2one(self):
+    class TaskOneToOne(bt.BaseProcessor):
+      def result(self, item):
+        return [item]
+      def action(self, item):
+        return self.result(item)
+    task = TaskOneToOne()
+    it_i = 5                  #Input
+    it_e = [it_i]             #Expected output
+    it_o = task.action(it_i)  #actual Output
+    self.assertEqual(it_o, it_e)
+  def test_one2many(self):
+    class TaskOneToTwo(bt.BaseProcessor):
+      def result(self, item, thing):
+        return [item, thing]
+      def action(self, item):
+        return self.result(item, 2*item)
+    task = TaskOneToTwo()
+    it_i = 5
+    it_e = [5, 10]
+    it_o = task.action(it_i)
+    self.assertEqual(it_o, it_e)
+  def test_many2one(self):
+    class TaskTwoToOne(bt.BaseProcessor):
+      def result(self, item):
+        return [item]
+      def action(self, item, thing):
+        return self.result(item + thing)
+    task = TaskTwoToOne()
+    it_i = (3, 2)
+    it_e = [5]
+    it_o = task.action(*it_i)
+    self.assertEqual(it_o, it_e)
+  def test_many2many(self):
+    class TaskTwoToThree(bt.BaseProcessor):
+      def result(self, item, thing, stuff):
+        return [item, thing, stuff]
+      def action(self, item, thing):
+        return self.result(item+thing, item*thing, str(item)+str(thing))
+    task = TaskTwoToThree()
+    it_i = (3, 2)
+    it_e = [5, 6, '32']
+    it_o = task.action(*it_i)
+    self.assertEqual(it_o, it_e)
+
 class TestParsing(unittest.TestCase):
   class SimpleTask(bt.BaseProcessor):
     params = [('arg',str)]

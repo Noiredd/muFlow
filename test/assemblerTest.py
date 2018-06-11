@@ -10,7 +10,7 @@ class TestImport(unittest.TestCase):
     self.assertEqual(len(a.tasks.keys()), 2)
     self.assertIn('test', a.tasks.keys())
 
-class TestAssembly(unittest.TestCase):
+class TestAssembler(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
   def test_instantiate(self):
     task = self.a.constructTask('test')
@@ -22,10 +22,10 @@ class TestAssembly(unittest.TestCase):
     flow = self.a.assembleFromText(['test'])
     self.assertIsInstance(flow, asm.FlowObject)
     self.assertEqual(len(flow.tasks), 1)
-    self.assertEqual(flow.execute(1), 2)
+    self.assertEqual(flow.execute()['item'], 2)
   def test_assembleMulti(self):
-    flow = self.a.assembleFromText(['test', 'add'])
-    self.assertEqual(flow.execute(1.5), 4)
+    flow = self.a.assembleFromText(['test', 'add', 'add'])
+    self.assertEqual(flow.execute()['item'], 4)
 
 
 if __name__=="__main__":
