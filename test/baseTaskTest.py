@@ -188,6 +188,5 @@ class TestParsing(unittest.TestCase):
     self.assertEqual(expected_inputs, task.getInputs())
     self.assertEqual(expected_outputs, task.getOutputs())
 
-
 if __name__=="__main__":
   unittest.main()

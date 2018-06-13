@@ -20,6 +20,10 @@ class TestAssemblerBasics(unittest.TestCase):
   def test_instantiateFail(self):
     with self.assertRaises(asm.ConstructException):
       task = self.a.constructTask('noTask')
+  def test_setupTask(self):
+    flow = self.a.assembleFromText(['test', 'add -1'])
+    flow.execute()
+    self.assertTrue(flow.tasks[1].ready)
   def test_assembleText(self):
     flow = self.a.assembleFromText(['test'])
     self.assertIsInstance(flow, asm.FlowObject)
@@ -49,11 +53,11 @@ class TestAssemblerBasics(unittest.TestCase):
       self.assertEqual(rslt['val1'], 5)
       self.assertEqual(rslt['val2'], 3)
     def testCustomFlowFailScope(self):
-      text = ['test (->val)', 'add (val1->val1) 3',]
+      text = ['test (->val)', 'add (val1->val1) 3']
       with self.assertRaises(bt.ParseIOSpecException):
         flow = self.a.assembleFromText(text)
     def testCustomFlowFailBrackets(self):
-      text = ['test (->val', 'add (val->val) 3',]
+      text = ['test (->val', 'add (val->val) 3']
       with self.assertRaises(bt.ParseIOSpecException):
         flow = self.a.assembleFromText(text)
 

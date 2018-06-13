@@ -11,6 +11,8 @@ class TestTask2(BaseProcessor):
   params  = [('const', int)]
   inputs  = ['item']
   outputs = ['item']
+  def setup(self):
+    self.ready = True
   def action(self, item):
     return item + self.const
 

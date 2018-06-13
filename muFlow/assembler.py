@@ -75,6 +75,9 @@ class FlowObject(object):
     self.tasks.append(task)
   
   def execute(self):
+    #start with setting up each task
+    for task in self.tasks:
+      task.setup()
     #execute the task list in order
     for task in self.tasks:
       #query each task for its required inputs and retrieve their values from the scope
