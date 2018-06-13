@@ -12,7 +12,7 @@ class TestImport(unittest.TestCase):
     self.assertIn('add', a.tasks.keys())
     self.assertIn('dup', a.tasks.keys())
 
-class TestAssembler(unittest.TestCase):
+class TestAssemblerBasics(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
   def test_instantiate(self):
     task = self.a.constructTask('test')
@@ -33,7 +33,29 @@ class TestAssembler(unittest.TestCase):
     rslt = flow.execute()
     self.assertEqual(rslt['item'], 5)
     self.assertEqual(rslt['thing'], 2)
-
+  
+  class TestAssemblerAdvanced(unittest.TestCase):
+    a = asm.Assembler('../test/tasks')
+    def testCustomFlow(self):
+      text = ['test (->val)', 'dup (val->val1,val2)', 'add (val1->val1) 3', 'add (val2->val2) 1']
+      flow = self.a.assembleFromText(text)
+      rslt = flow.execute()
+      self.assertEqual(rslt['val1'], 5)
+      self.assertEqual(rslt['val2'], 3)
+    def testCustomFlowSpaces(self):
+      text = ['test(->val)', 'dup (val -> val1, val2)', 'add (val1 -> val1) 3', 'add(val2->val2)1']
+      flow = self.a.assembleFromText(text)
+      rslt = flow.execute()
+      self.assertEqual(rslt['val1'], 5)
+      self.assertEqual(rslt['val2'], 3)
+    def testCustomFlowFailScope(self):
+      text = ['test (->val)', 'add (val1->val1) 3',]
+      with self.assertRaises(bt.ParseIOSpecException):
+        flow = self.a.assembleFromText(text)
+    def testCustomFlowFailBrackets(self):
+      text = ['test (->val', 'add (val->val) 3',]
+      with self.assertRaises(bt.ParseIOSpecException):
+        flow = self.a.assembleFromText(text)
 
 if __name__=="__main__":
   unittest.main()

@@ -14,6 +14,9 @@ class BaseProcessor(object):
   outputs = []
   
   def __init__(self, *args):
+    thereWasIOSpec = self.__parseIOSpec(*args)
+    if thereWasIOSpec:
+      args = args[1:] #if the first element *was* an IO spec - remove it
     self.__parseArgs(*args)
   
   @classmethod
@@ -38,6 +41,41 @@ class BaseProcessor(object):
         #don't care about being unable to actually convert the string
         pass
     #nothing needs to be returned - if this completes, we're good
+  
+  def __parseIOSpec(self, *args):
+    #check if an input-output override was requested and handle it
+    #expects input of following form:
+    #   ([input1[,input2[...]]][->output1[,output2[...]]])
+    #this means that "(item)" as well as "(->name,image)" are allowed
+    #also, text between brackets must have spaces removed
+    if len(args)==0 or not args[0].startswith('('):
+      #no IO redirection spec - we're done
+      return False  #not received anything
+    if not args[0].endswith(')'):
+      raise ParseIOSpecException(self.name, 'unbalanced brackets')
+    io_spec = args[0][1:-1]
+    if '->' in io_spec:
+      io_in_, io_out_ = io_spec.split('->')
+    else:
+      io_in_  = io_spec
+      io_out_ = ''
+    #input override
+    if io_in_ != '':
+      io_in = io_in_.split(',')
+      if len(io_in) != len(self.inputs):
+        raise ParseIOSpecException(self.name, 'input spec length mismatch:' + 
+              'expected {}, received {}'.format(len(self.inputs), len(io_in)))
+      else:
+        self.inputs = io_in
+    #output override
+    if io_out_ != '':
+      io_out = io_out_.split(',')
+      if len(io_out) != len(self.outputs):
+        raise ParseIOSpecException(self.name, 'output spec length mismatch:' + 
+              'expected {}, received {}'.format(len(self.outputs), len(io_out)))
+      else:
+        self.outputs = io_out
+    return True #parsed inputs
   
   def __parseArgs(self, *args):
     #make sure we get the right number of arguments
@@ -88,3 +126,7 @@ class ParseArgsException(muException):
     self.message = 'bad type for param "' + param[0] + '" - expected a ' + s(param[1]) + ' (' + taskname + ')'
     super(ParseArgsException, self).__init__(self.message)
 
+class ParseIOSpecException(muException):
+  def __init__(self, taskname, message):
+    self.message = message + ' (' + taskname + ')'
+    super(ParseIOSpecException, self).__init__(self.message)

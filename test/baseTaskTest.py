@@ -128,8 +128,6 @@ class TestTaskInputOutput(unittest.TestCase):
 class TestParsing(unittest.TestCase):
   class SimpleTask(bt.BaseProcessor):
     params = [('arg',str)]
-  class ParamsTask(bt.BaseProcessor):
-    params = [('count',int), ('number',float), ('text',str)]
   #argument counting
   def test_notEnoughArgs(self):
     with self.assertRaises(bt.ArgsListException):
@@ -141,6 +139,8 @@ class TestParsing(unittest.TestCase):
     task = self.SimpleTask('value')
     self.assertTrue(hasattr(task, 'arg'))
   #argument parsing
+  class ParamsTask(bt.BaseProcessor):
+    params = [('count',int), ('number',float), ('text',str)]
   def test_parseStr(self):
     task = self.ParamsTask('5', '2.0', 'value')
     self.assertEqual(type(task.text), str)
@@ -159,6 +159,34 @@ class TestParsing(unittest.TestCase):
   def test_parseFloatFail(self):
     with self.assertRaises(bt.ParseArgsException):
       task = self.ParamsTask('5', 'er2.2', 'value')
+  #input/output override
+  class IOTaskInput(bt.BaseProcessor):
+    inputs = ['item', 'name']
+  def test_parseBracketsFail(self):
+    with self.assertRaises(bt.ParseIOSpecException):
+      task = self.IOTaskInput('(thing,itsname')
+  def test_parseInputNumFail(self):
+    with self.assertRaises(bt.ParseIOSpecException):
+      task = self.IOTaskInput('(thing)')
+  def test_parseInputOverride(self):
+    task = self.IOTaskInput('(thing,filename)')
+    expected_inputs = ['thing', 'filename']
+    self.assertEqual(expected_inputs, task.getInputs())
+  class IOTaskOutput(bt.BaseProcessor):
+    outputs = ['image', 'mask', 'alpha']
+  def test_parseOutputOverride(self):
+    task = self.IOTaskOutput('(->rgb,ignore,a)')
+    expected_outputs = ['rgb', 'ignore', 'a']
+    self.assertEqual(expected_outputs, task.getOutputs())
+  class IOTaskInOut(bt.BaseProcessor):
+    inputs = ['in1', 'in2']
+    outputs = ['out']
+  def test_parseInputOutput(self):
+    task = self.IOTaskInOut('(a,b->c)')
+    expected_inputs = ['a', 'b']
+    expected_outputs = ['c']
+    self.assertEqual(expected_inputs, task.getInputs())
+    self.assertEqual(expected_outputs, task.getOutputs())
 
 
 if __name__=="__main__":

@@ -44,6 +44,15 @@ class Assembler(object):
   def assembleFromText(self, lines):
     flow = FlowObject()
     for line in lines:
+      #more flexibility in IO override text
+      if '(' in line:
+        if line.count('(') > 1 or line.count(')') > 1:
+          raise ConstructException(task_name, 'unbalanced brackets')
+        despace = lambda x: ''.join(x.split())
+        pre, btwn = line.split('(')
+        btwn, post = btwn.split(')')
+        btwn = despace(btwn)
+        line = pre + '(' + btwn + ')' + post
       task = self.constructTask(line)
       flow.append(task)
     return flow
