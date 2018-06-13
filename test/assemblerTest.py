@@ -26,12 +26,12 @@ class TestAssembler(unittest.TestCase):
     self.assertEqual(len(flow.tasks), 1)
     self.assertEqual(flow.execute()['item'], 2)
   def test_assembleMulti(self):
-    flow = self.a.assembleFromText(['test', 'add', 'add'])
-    self.assertEqual(flow.execute()['item'], 4)
+    flow = self.a.assembleFromText(['test', 'add 1', 'add 2'])
+    self.assertEqual(flow.execute()['item'], 5)
   def test_assembleThreeway(self):
-    flow = self.a.assembleFromText(['test', 'dup', 'add'])
+    flow = self.a.assembleFromText(['test', 'dup', 'add 3'])
     rslt = flow.execute()
-    self.assertEqual(rslt['item'], 3)
+    self.assertEqual(rslt['item'], 5)
     self.assertEqual(rslt['thing'], 2)
 
 

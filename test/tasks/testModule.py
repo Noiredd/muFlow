@@ -8,10 +8,11 @@ class TestTask(BaseProcessor):
 
 class TestTask2(BaseProcessor):
   name = 'add'
+  params  = [('const', int)]
   inputs  = ['item']
   outputs = ['item']
   def action(self, item):
-    return item + 1
+    return item + self.const
 
 class TestTask3(BaseProcessor):
   name = 'dup'
