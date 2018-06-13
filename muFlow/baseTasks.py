@@ -2,9 +2,6 @@
 import sys
 if sys.version_info < (3,0):
   from exceptions import Exception
-  from inspect import getargspec as muArgSpec
-else:
-  from inspect import getfullargspec as muArgSpec
 muException = Exception
 #####Python 2 and 3 compatibility#####
 
@@ -13,11 +10,11 @@ class BaseProcessor(object):
   name = ''
   info = ''
   params = []
+  inputs = []
+  outputs = []
   
   def __init__(self, *args):
     self.__parseArgs(*args)
-    self.inputs  = self.defaultInputs()
-    self.outputs = self.defaultOutputs()
   
   @classmethod
   def validateParams(cls):
@@ -41,18 +38,6 @@ class BaseProcessor(object):
         #don't care about being unable to actually convert the string
         pass
     #nothing needs to be returned - if this completes, we're good
-  
-  @classmethod
-  def defaultInputs(cls):
-    #give names of items the task requests
-    args = muArgSpec(cls.action).args[1:] #ignore 'self' arg
-    return args
-    
-  @classmethod
-  def defaultOutputs(cls):
-    #give names of items the task outputs
-    args = muArgSpec(cls.result).args[1:] #ignore 'self' arg
-    return args
   
   def __parseArgs(self, *args):
     #make sure we get the right number of arguments
@@ -83,12 +68,6 @@ class BaseProcessor(object):
   
   def action(self, *args):
     #parallelized (per-item) user code
-    #must be overridden with named arguments
-    pass
-  
-  def result(self, **kwargs):
-    #'action' shall call this to return values to the flow
-    #must be overridden with named arguments
     pass
 
 

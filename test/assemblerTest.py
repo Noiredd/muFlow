@@ -7,8 +7,10 @@ import baseTasks as bt
 class TestImport(unittest.TestCase):
   def test_import(self):
     a = asm.Assembler('../test/tasks')
-    self.assertEqual(len(a.tasks.keys()), 2)
+    self.assertEqual(len(a.tasks.keys()), 3)
     self.assertIn('test', a.tasks.keys())
+    self.assertIn('add', a.tasks.keys())
+    self.assertIn('dup', a.tasks.keys())
 
 class TestAssembler(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
@@ -26,6 +28,11 @@ class TestAssembler(unittest.TestCase):
   def test_assembleMulti(self):
     flow = self.a.assembleFromText(['test', 'add', 'add'])
     self.assertEqual(flow.execute()['item'], 4)
+  def test_assembleThreeway(self):
+    flow = self.a.assembleFromText(['test', 'dup', 'add'])
+    rslt = flow.execute()
+    self.assertEqual(rslt['item'], 3)
+    self.assertEqual(rslt['thing'], 2)
 
 
 if __name__=="__main__":

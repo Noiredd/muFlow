@@ -73,8 +73,13 @@ class FlowObject(object):
       #feed them to the task and run it
       results = task.action(*inputs) if inputs is not [] else task.action()
       #pack the output back to the scope
-      for result, key in zip(results, task.getOutputs()):
-        self.scope[key] = result
+      #mind that if there's a single output, it will be passed as is,
+      #but multiple outputs will be packed into a tuple
+      if len(task.getOutputs()) > 1:
+        for result, key in zip(results, task.getOutputs()):
+          self.scope[key] = result
+      else:
+        self.scope[task.getOutputs()[0]] = results
     return self.scope
 
 class ConstructException(baseTasks.muException):
