@@ -108,6 +108,10 @@ class BaseProcessor(object):
     #parallelized (per-item) user code
     pass
 
+class BaseParallel(BaseProcessor):
+  def __init__(self, *args):
+    super(BaseParallel, self).__init__(*args)
+
 
 class BadParamException(muException):
   def __init__(self, taskname, param, text):

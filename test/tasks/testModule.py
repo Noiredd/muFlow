@@ -1,4 +1,4 @@
-from baseTasks import BaseProcessor
+from baseTasks import BaseProcessor, BaseParallel
 
 class TestTask(BaseProcessor):
   name = 'test'
@@ -22,3 +22,10 @@ class TestTask3(BaseProcessor):
   outputs = ['item', 'thing']
   def action(self, x):
     return x, x
+
+class ParallelTask1(BaseParallel):
+  name = 'inc_each'
+  inputs = ['items']
+  outputs = ['items']
+  def action(self, item):
+    return item + 1

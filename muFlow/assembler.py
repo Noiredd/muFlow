@@ -7,6 +7,8 @@ import baseTasks
 
 class Assembler(object):
   taskFolder = 'tasks/'
+  tasks_serial = {}
+  tasks_parallel = {}
   
   def __init__(self, altPath=None):
     self.__importTasks(self.taskFolder if altPath is None else altPath)
@@ -19,27 +21,35 @@ class Assembler(object):
       if os.path.isfile(path + module) and module.endswith('.py'):
         module_names.append( module.split('.')[0] )
     #import each and extract only the classes that derive from BaseProcessor
-    self.tasks = {}
     sys.path.append(path)
     for module in module_names:
       tmod = importlib.import_module(module)
       for name, obj in inspect.getmembers(tmod, inspect.isclass):
-        if issubclass(obj, baseTasks.BaseProcessor) and not obj==baseTasks.BaseProcessor:
+        if (issubclass(obj, baseTasks.BaseProcessor) and
+            not obj==baseTasks.BaseProcessor and not obj==baseTasks.BaseParallel):
           try:
             obj.validateParams()
           except baseTasks.BadParamException as e:
             print(e.message, '- skipping import')
           else:
-            self.tasks[obj.name] = obj
+            #any task that reached this point is good to go, regardless of what kind it was
+            #but now it matters whether it's parallel or serial
+            if issubclass(obj, baseTasks.BaseParallel):
+              self.tasks_parallel[obj.name] = obj
+            else:
+              self.tasks_serial[obj.name] = obj
   
   def constructTask(self, text):
     #parses a given text (line) and attempts to construct a task from it
     args = text.split()
     task_name = args[0]
     task_args = args[1:]
-    if task_name not in self.tasks.keys():
+    if task_name in self.tasks_serial.keys():
+      return True, self.tasks_serial[task_name](*task_args)
+    elif task_name in self.tasks_parallel.keys():
+      return False, self.tasks_parallel[task_name](*task_args)
+    else:
       raise ConstructException(task_name, 'no such task')
-    return self.tasks[task_name](*task_args)
   
   def assembleFromText(self, lines):
     flow = FlowObject()
@@ -53,16 +63,20 @@ class Assembler(object):
         btwn, post = btwn.split(')')
         btwn = despace(btwn)
         line = pre + '(' + btwn + ')' + post
-      task = self.constructTask(line)
-      flow.append(task)
+      isSerial, task = self.constructTask(line)
+      if isSerial:
+        flow.appendSerial(task)
+      else:
+        flow.appendParallel(task)
     return flow
 
 class FlowObject(object):
   def __init__(self):
     self.tasks = [] #tasks are executed in order
     self.scope = {} #place where the intermediate results are contained
+    self.parallel_streak = False  #during construction, informs if the last added task was parallel
   
-  def append(self, task):
+  def appendSerial(self, task):
     #append the task to the execution list
     #first check whether the scope contains items that this task would request
     requests = task.getInputs()
@@ -93,6 +107,7 @@ class FlowObject(object):
       else:
         self.scope[task.getOutputs()[0]] = results
     return self.scope
+
 
 class ConstructException(baseTasks.muException):
   def __init__(self, taskname, text):

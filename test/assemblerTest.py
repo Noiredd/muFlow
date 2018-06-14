@@ -5,21 +5,26 @@ import assembler as asm
 import baseTasks as bt
 
 class TestImport(unittest.TestCase):
-  def test_import(self):
-    a = asm.Assembler('../test/tasks')
-    self.assertEqual(len(a.tasks.keys()), 3)
-    self.assertIn('test', a.tasks.keys())
-    self.assertIn('add', a.tasks.keys())
-    self.assertIn('dup', a.tasks.keys())
+  assembler = asm.Assembler('../test/tasks')
+  def test_importSerial(self):
+    a = self.assembler
+    self.assertEqual(len(a.tasks_serial.keys()), 3)
+    self.assertIn('test', a.tasks_serial.keys())
+    self.assertIn('add', a.tasks_serial.keys())
+    self.assertIn('dup', a.tasks_serial.keys())
+  def test_importParallel(self):
+    a = self.assembler
+    self.assertEqual(len(a.tasks_parallel.keys()), 1)
+    self.assertIn('inc_each', a.tasks_parallel.keys())
 
 class TestAssemblerBasics(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
   def test_instantiate(self):
-    task = self.a.constructTask('test')
+    _, task = self.a.constructTask('test')
     self.assertIsInstance(task, bt.BaseProcessor)
   def test_instantiateFail(self):
     with self.assertRaises(asm.ConstructException):
-      task = self.a.constructTask('noTask')
+      _, task = self.a.constructTask('noTask')
   def test_setupTask(self):
     flow = self.a.assembleFromText(['test', 'add -1'])
     flow.execute()
