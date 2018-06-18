@@ -8,66 +8,66 @@ class TestImport(unittest.TestCase):
   assembler = asm.Assembler('../test/tasks')
   def test_importSerial(self):
     a = self.assembler
-    self.assertEqual(len(a.tasks_serial.keys()), 4)
-    self.assertIn('test', a.tasks_serial.keys())
+    self.assertEqual(len(a.tasks_serial.keys()), 3)
+    self.assertIn('src', a.tasks_serial.keys())
     self.assertIn('add', a.tasks_serial.keys())
     self.assertIn('dup', a.tasks_serial.keys())
-    self.assertIn('list', a.tasks_serial.keys())
   def test_importParallel(self):
     a = self.assembler
-    self.assertEqual(len(a.tasks_parallel.keys()), 3)
-    self.assertIn('inc_each', a.tasks_parallel.keys())
+    self.assertEqual(len(a.tasks_parallel.keys()), 2)
+    self.assertIn('list', a.tasks_parallel.keys())
+    self.assertIn('incr', a.tasks_parallel.keys())
 
 class TestAssemblerBasics(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
   def test_instantiate(self):
-    _, task = self.a.constructTask('test')
+    _, task = self.a.constructTask('src 5')
     self.assertIsInstance(task, bt.BaseProcessor)
   def test_instantiateFail(self):
     with self.assertRaises(asm.ConstructException):
       _, task = self.a.constructTask('noTask')
   def test_setupTask(self):
-    flow = self.a.assembleFromText(['test', 'add -1'])
+    flow = self.a.assembleFromText(['src 2', 'add -1'])
     flow.execute()
     self.assertTrue(flow.tasks[1].ready)
   def test_assembleText(self):
-    flow = self.a.assembleFromText(['test'])
+    flow = self.a.assembleFromText(['src 2'])
     self.assertIsInstance(flow, asm.MacroFlow)
     self.assertEqual(len(flow.tasks), 1)
     self.assertEqual(flow.execute()['item'], 2)
   def test_assembleMulti(self):
-    flow = self.a.assembleFromText(['test', 'add 1', 'add 2'])
+    flow = self.a.assembleFromText(['src 2', 'add 1', 'add 2'])
     self.assertEqual(flow.execute()['item'], 5)
   def test_assembleThreeway(self):
-    flow = self.a.assembleFromText(['test', 'dup', 'add 3'])
+    flow = self.a.assembleFromText(['src 2', 'dup', 'add 3'])
     rslt = flow.execute()
     self.assertEqual(rslt['item'], 5)
     self.assertEqual(rslt['thing'], 2)
   
 class TestAssemblerAdvanced(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
-  def testCustomFlow(self):
-    text = ['test (->val)', 'dup (val->val1,val2)', 'add (val1->val1) 3', 'add (val2->val2) 1']
+  def test_customFlow(self):
+    text = ['src (->val) 0', 'dup (val->val1,val2)', 'add (val1->val1) 3', 'add (val2->val2) 1']
     flow = self.a.assembleFromText(text)
     rslt = flow.execute()
-    self.assertEqual(rslt['val1'], 5)
-    self.assertEqual(rslt['val2'], 3)
-  def testCustomFlowSpaces(self):
-    text = ['test(->val)', 'dup (val -> val1, val2)', 'add (val1 -> val1) 3', 'add(val2->val2)1']
+    self.assertEqual(rslt['val1'], 3)
+    self.assertEqual(rslt['val2'], 1)
+  def test_customFlowSpaces(self):
+    text = ['src(->val) -1', 'dup (val -> val1, val2)', 'add (val1 -> val1) 3', 'add(val2->val2)1']
     flow = self.a.assembleFromText(text)
     rslt = flow.execute()
-    self.assertEqual(rslt['val1'], 5)
-    self.assertEqual(rslt['val2'], 3)
-  def testCustomFlowFailInputs(self):
-    text = ['test', 'dup (item, item->item, val)']
+    self.assertEqual(rslt['val1'], 2)
+    self.assertEqual(rslt['val2'], 0)
+  def test_customFlowFailInputs(self):
+    text = ['src 0', 'dup (item, item->item, val)']
     with self.assertRaises(bt.ParseIOSpecException):
       flow = self.a.assembleFromText(text)
-  def testCustomFlowFailScope(self):
-    text = ['test (->val)', 'add (val1->val1) 3']
+  def test_customFlowFailScope(self):
+    text = ['src (->val) -4', 'add (val1->val1) 3']
     with self.assertRaises(asm.ConstructException):
       flow = self.a.assembleFromText(text)
-  def testCustomFlowFailBrackets(self):
-    text = ['test (->val', 'add (val->val) 3']
+  def test_customFlowFailBrackets(self):
+    text = ['src (->val 3', 'add (val->val) 3']
     with self.assertRaises(asm.ConstructException):
       flow = self.a.assembleFromText(text)
 
@@ -115,5 +115,28 @@ class TestMicroFlow(unittest.TestCase):
     uFlow.action(scope['items'])
     self.assertEqual(mTask.capture, expected)
 
+class TestAssemblerParallel(unittest.TestCase):
+  a = asm.Assembler('../test/tasks')
+  def test_parallelFlow(self):
+    expected = [1, 2, 3, 4, 5]
+    text = ['list 5', 'incr (items->plus1)']
+    flow = self.a.assembleFromText(text)
+    flow.execute()
+    self.assertIn('plus1', flow.scope.keys())
+    self.assertEqual(flow.scope['plus1'], expected)
+  def test_interleavePSP(self):
+    expected_item  = [1, 2, 3, 4]
+    expected_thing = [2, 3, 4, 5]
+    text = ['list 4', 'incr', 'dup(items->item,thing)', 'incr (thing->thing)']
+    flow = self.a.assembleFromText(text)
+    flow.execute()
+    self.assertIn('item', flow.scope.keys())
+    self.assertIn('thing', flow.scope.keys())
+    self.assertEqual(flow.scope['item'], expected_item)
+    self.assertEqual(flow.scope['thing'], expected_thing)
+
+
+
 if __name__=="__main__":
+  print("Running assembler tests...")
   unittest.main()

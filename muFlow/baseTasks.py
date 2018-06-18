@@ -63,7 +63,7 @@ class BaseProcessor(object):
     if io_in_ != '':
       io_in = io_in_.split(',')
       if len(io_in) != len(self.inputs):
-        raise ParseIOSpecException(self.name, 'input spec length mismatch:' + 
+        raise ParseIOSpecException(self.name, 'input spec length mismatch: ' +
               'expected {}, received {}'.format(len(self.inputs), len(io_in)))
       else:
         self.inputs = io_in
@@ -71,7 +71,7 @@ class BaseProcessor(object):
     if io_out_ != '':
       io_out = io_out_.split(',')
       if len(io_out) != len(self.outputs):
-        raise ParseIOSpecException(self.name, 'output spec length mismatch:' + 
+        raise ParseIOSpecException(self.name, 'output spec length mismatch: ' +
               'expected {}, received {}'.format(len(self.outputs), len(io_out)))
       else:
         self.outputs = io_out
