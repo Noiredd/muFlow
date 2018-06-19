@@ -23,3 +23,14 @@ class TestTaskDuplicate(BaseProcessor):
   outputs = ['item', 'thing']
   def action(self, x):
     return x, x
+
+class TestTaskCreateList(BaseProcessor):
+  name = 'lst'
+  params = [('count', int)]
+  outputs = ['item']
+  def action(self):
+    return [i for i in range(self.count)]
+
+class TestDebugGetter(BaseProcessor):
+  name = 'get'
+  inputs = ['item']

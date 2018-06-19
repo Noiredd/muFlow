@@ -74,21 +74,40 @@ class MacroFlow(object):
   def __init__(self):
     self.tasks = [] #tasks are executed in order
     self.scope = {} #place where the intermediate results are contained
+    self.micros = []      #potential outputs of MicroFlows; list of tuples
     self.parallel = None  #MicroFlow object during construction
   
-  def appendSerial(self, task):
+  def appendSerial(self, task, isMicro=False):
     #append a serial task to the execution list
     #if a parallel task was added before, its MicroFlow has to be completed
     if self.parallel is not None:
       self.completeParallel()
-    #first check whether the scope contains items that this task would request
+    #check whether the task's input requirements can be satisfied
     requests = task.getInputs()
     for request in requests:
-      if request not in self.scope.keys():
+      found = False
+      #see if any of the parallel tasks can produce that item
+      for micro in self.micros:
+        if request in micro[1]:
+          microFlowTaskID = micro[0]
+          #kindly ask that task to output it
+          self.tasks[microFlowTaskID].gather(request)
+          #and assume it will obey
+          self.scope[request] = None
+          #no need to look through the macro scope
+          found = True
+          break
+      if not found and request not in self.scope.keys():
         raise ConstructException(task.name, 'requests "' + request + '" which is not in scope yet')
-    #if this has passed, update the scope and append the task
-    for output in task.getOutputs():
-      self.scope[output] = None
+    #if it *is* a parallel task being added, mind that it doesn't output anything by default
+    #instead, ask it what could it possibly output and keep track of that
+    #if a serial task comes later and requests something from that potential scope,
+    #the parallel task will be instructed to actually produce that output
+    if isMicro:
+      self.micros.append( (len(self.tasks), task.micro_scope) )
+    else:
+      for output in task.getOutputs():
+        self.scope[output] = None
     self.tasks.append(task)
   
   def appendParallel(self, task):
@@ -102,7 +121,7 @@ class MacroFlow(object):
     if self.parallel is not None:
       task = self.parallel
       self.parallel = None
-      self.appendSerial(task) #treat it as a serial task
+      self.appendSerial(task, isMicro=True) #treat it *almost* as a serial task
   
   def execute(self):
     #start with setting up each task
@@ -130,28 +149,37 @@ class MacroFlow(object):
 class MicroFlow(object):
   def __init__(self, macro_scope):
     self.tasks = []
+    self.gathered = []
     self.macro_scope = macro_scope
-    self.micro_scope = {}   #just for building phase
+    self.micro_scope = set()  #just for building phase
     self.map_requests = []  #those items aren't produced by either of the local tasks
   
   def append(self, task):
     requests = task.getInputs()
     for request in requests:
-      if request not in self.micro_scope.keys():
+      if request not in self.micro_scope:
         #if the task requests an item that is not in the local scope, it might be in the macro
         if request in self.macro_scope.keys():
           self.map_requests.append(request)
         else:
           raise ConstructException(task.name, 'requests "' + request + '" which is not in scope yet')
     for output in task.getOutputs():
-      self.micro_scope[output] = None
+      self.micro_scope.add(output)
     self.tasks.append(task)
   
   def getInputs(self):
     return self.map_requests
   
   def getOutputs(self):
-    return []
+    return self.gathered
+  
+  def gather(self, item):
+    #set to actually produce an item by given name
+    if item not in self.micro_scope:
+      raise ConstructException('MicroFlow', 'item "' + item + '" is not in the local scope!')
+    #ignore if we're already gathering this item
+    if item not in self.gathered:
+      self.gathered.append(item)
 
   #quack like a BaseProcessor
   def setup(self, **kwargs):
@@ -159,6 +187,11 @@ class MicroFlow(object):
     pass
 
   def action(self, *args):
+    #prepare to output items that were requested
+    #TODO: parallelizing this over multiple threads/processes
+    self.results = {}
+    for item in self.gathered:
+      self.results[item] = []
     #iterate over all args in parallel in such a way that every set of values is a dict
     #this will be split onto multiple threads/processes
     for this_scope in [dict(zip(self.map_requests, pack)) for pack in zip(*args)]:
@@ -178,7 +211,15 @@ class MicroFlow(object):
           scope[outputs[0]] = results
         else:
           pass
-
+      #if anything from the local scope was marked as gathered - do so
+      for item in self.gathered:
+        self.results[item].append( scope[item] )
+    if len(self.gathered) > 1:
+      return [self.results[key] for key in self.gathered]
+    elif len(self.gathered) == 1:
+      return self.results[self.gathered[0]]
+    else:
+      return None
 
 class ConstructException(baseTasks.muException):
   def __init__(self, taskname, text):

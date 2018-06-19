@@ -8,15 +8,17 @@ class TestImport(unittest.TestCase):
   assembler = asm.Assembler('../test/tasks')
   def test_importSerial(self):
     a = self.assembler
-    self.assertEqual(len(a.tasks_serial.keys()), 3)
+    self.assertEqual(len(a.tasks_serial.keys()), 5)
     self.assertIn('src', a.tasks_serial.keys())
     self.assertIn('add', a.tasks_serial.keys())
     self.assertIn('dup', a.tasks_serial.keys())
+    self.assertIn('lst', a.tasks_serial.keys())
+    self.assertIn('get', a.tasks_serial.keys())
   def test_importParallel(self):
     a = self.assembler
     self.assertEqual(len(a.tasks_parallel.keys()), 2)
-    self.assertIn('list', a.tasks_parallel.keys())
     self.assertIn('incr', a.tasks_parallel.keys())
+    self.assertIn('vmul', a.tasks_parallel.keys())
 
 class TestAssemblerBasics(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
@@ -119,23 +121,22 @@ class TestAssemblerParallel(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
   def test_parallelFlow(self):
     expected = [1, 2, 3, 4, 5]
-    text = ['list 5', 'incr (items->plus1)']
+    text = ['lst 5', 'incr (item->plus1) 1', 'dup(plus1->a,b)']
     flow = self.a.assembleFromText(text)
     flow.execute()
     self.assertIn('plus1', flow.scope.keys())
     self.assertEqual(flow.scope['plus1'], expected)
-  def test_interleavePSP(self):
-    expected_item  = [1, 2, 3, 4]
-    expected_thing = [2, 3, 4, 5]
-    text = ['list 4', 'incr', 'dup(items->item,thing)', 'incr (thing->thing)']
+  def test_multipleFlows(self):
+    expected_b = [1, 2, 3, 4]
+    expected_d = [2, 6, 12, 20]
+    text = ['lst (->a) 4', 'incr (a->b) 1', 'get (b)', 'incr (a->c) 2', 'vmul (b,c->d)','get (d)']
     flow = self.a.assembleFromText(text)
     flow.execute()
-    self.assertIn('item', flow.scope.keys())
-    self.assertIn('thing', flow.scope.keys())
-    self.assertEqual(flow.scope['item'], expected_item)
-    self.assertEqual(flow.scope['thing'], expected_thing)
-
-
+    self.assertIn('b', flow.scope.keys())
+    self.assertIn('d', flow.scope.keys())
+    self.assertNotIn('c', flow.scope.keys())
+    self.assertEqual(flow.scope['b'], expected_b)
+    self.assertEqual(flow.scope['d'], expected_d)
 
 if __name__=="__main__":
   print("Running assembler tests...")

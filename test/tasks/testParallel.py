@@ -1,15 +1,16 @@
 from baseTasks import BaseParallel
 
-class TestTaskCreateList(BaseParallel):
-  name = 'list'
-  params = [('count', int)]
-  outputs = ['items']
-  def action(self):
-    return [i for i in range(self.count)]
-
 class TestTaskIncrementParallel(BaseParallel):
   name = 'incr'
+  params = [('const', int)]
   inputs = ['items']
   outputs = ['items']
   def action(self, item):
-    return item + 1
+    return item + self.const
+
+class TestTaskMultiplyParallel(BaseParallel):
+  name = 'vmul'
+  inputs = ['x', 'y']
+  outputs = ['items']
+  def action(self, x, y):
+    return x * y
