@@ -16,9 +16,10 @@ class TestImport(unittest.TestCase):
     self.assertIn('get', a.tasks_serial.keys())
   def test_importParallel(self):
     a = self.assembler
-    self.assertEqual(len(a.tasks_parallel.keys()), 2)
+    self.assertEqual(len(a.tasks_parallel.keys()), 3)
     self.assertIn('incr', a.tasks_parallel.keys())
     self.assertIn('vmul', a.tasks_parallel.keys())
+    self.assertIn('simo', a.tasks_parallel.keys())
 
 class TestAssemblerBasics(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
@@ -79,17 +80,18 @@ class TestMicroFlow(unittest.TestCase):
     class TaskParallelSimple(bt.BaseParallel):
       inputs = ['items']
       outputs = ['items']
-      capture = []
       def action(self, x):
-        self.capture.append(x + 1)
+        return x + 1
     pTask = TaskParallelSimple()
     test_data = [1, 2, 4, 6, 9]
     expected  = [2, 3, 5, 7, 10]
     scope = {'items': test_data}
     uFlow = asm.MicroFlow(scope)
     uFlow.append(pTask)
-    uFlow.action(scope['items'])
-    self.assertEqual(pTask.capture, expected)
+    uFlow.gather('items')
+    uFlow.setup()
+    result = uFlow.action(scope['items'])
+    self.assertEqual(result, expected)
   def test_parallelFlow(self):
     class TaskIncrement(bt.BaseParallel):
       inputs = ['items']
@@ -103,19 +105,20 @@ class TestMicroFlow(unittest.TestCase):
         return x - 1
     class TaskMultiply(bt.BaseParallel):
       inputs = ['incremented', 'decremented']
-      capture = []
+      outputs = ['items']
       def action(self, x, y):
-        self.capture.append(x * y)
+        return x * y
     test_data = [1, 2, 4, 6]
     expected  = [0, 3, 15, 35]
     scope = {'items': test_data}
     uFlow = asm.MicroFlow(scope)
     uFlow.append(TaskIncrement())
     uFlow.append(TaskDecrement())
-    mTask = TaskMultiply()
-    uFlow.append(mTask)
-    uFlow.action(scope['items'])
-    self.assertEqual(mTask.capture, expected)
+    uFlow.append(TaskMultiply())
+    uFlow.gather('items')
+    uFlow.setup()
+    result = uFlow.action(scope['items'])
+    self.assertEqual(result, expected)
 
 class TestAssemblerParallel(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
@@ -126,6 +129,16 @@ class TestAssemblerParallel(unittest.TestCase):
     flow.execute()
     self.assertIn('plus1', flow.scope.keys())
     self.assertEqual(flow.scope['plus1'], expected)
+  def test_multipleOutputsFlow(self):
+    expected_c = [0.5, 1.0, 1.5, 2.0]
+    expected_d = [2, 4, 6, 8]
+    text = ['lst (->a) 4', 'incr (a->b) 1', 'simo (b->c,d) 2', 'get(c)', 'get(d)']
+    flow = self.a.assembleFromText(text)
+    flow.execute()
+    self.assertIn('c', flow.scope.keys())
+    self.assertIn('d', flow.scope.keys())
+    self.assertEqual(flow.scope['c'], expected_c)
+    self.assertEqual(flow.scope['d'], expected_d)
   def test_multipleFlows(self):
     expected_b = [1, 2, 3, 4]
     expected_d = [2, 6, 12, 20]

@@ -1,5 +1,6 @@
 import importlib
 import inspect
+import multiprocessing as mp
 import os
 import sys
 
@@ -183,18 +184,53 @@ class MicroFlow(object):
 
   #quack like a BaseProcessor
   def setup(self, **kwargs):
-    #this would instantiate a thread/process pool so that action() just starts it
-    pass
+    #TODO: configurable number of processes
+    #TODO: progress reporting by only one process
+    self.num_proc = 4
+    self.pipes = []
+    self.pool = []
+    for i in range(self.num_proc):
+      a, b = mp.Pipe(True)  #duplex pipe - we send data and receive results
+      self.pipes.append(a)
+      self.pool.append(mp.Process(target=self.sequence, args=(b,)))
 
   def action(self, *args):
     #prepare to output items that were requested
-    #TODO: parallelizing this over multiple threads/processes
-    self.results = {}
-    for item in self.gathered:
-      self.results[item] = []
+    #results = {}
+    #for item in self.gathered:
+    #  results[item] = []
     #iterate over all args in parallel in such a way that every set of values is a dict
-    #this will be split onto multiple threads/processes
-    for this_scope in [dict(zip(self.map_requests, pack)) for pack in zip(*args)]:
+    input_data = [dict(zip(self.map_requests, pack)) for pack in zip(*args)]
+    #send each process its share of work and start them
+    batch_size = len(input_data) // self.num_proc + 1
+    for i in range(self.num_proc):
+      self.pipes[i].send(input_data[i*batch_size:(i+1)*batch_size])
+      self.pool[i].start()
+    #wait until they are all done
+    for process in self.pool:
+      process.join()
+    #receive the outputs and merge them
+    outputs = [pipe.recv() for pipe in self.pipes]
+    results = {item: [] for item in self.gathered}
+    for item in self.gathered:
+      for output in outputs:
+        results[item] += output[item]
+    #output
+    if len(self.gathered) > 1:
+      return [results[key] for key in self.gathered]
+    elif len(self.gathered) == 1:
+      return results[self.gathered[0]]
+    else:
+      return None
+  
+  def sequence(self, pipe):
+    #this function is executed by each process separately
+    #start by receiving data
+    input_data = pipe.recv()
+    #prepare to gather the outputs
+    collect = {item: [] for item in self.gathered}
+    #iterate over it, executing the task sequence
+    for this_scope in input_data:
       #local, non-persistent scope
       scope = {}
       #iterate over the sequence of tasks
@@ -213,13 +249,10 @@ class MicroFlow(object):
           pass
       #if anything from the local scope was marked as gathered - do so
       for item in self.gathered:
-        self.results[item].append( scope[item] )
-    if len(self.gathered) > 1:
-      return [self.results[key] for key in self.gathered]
-    elif len(self.gathered) == 1:
-      return self.results[self.gathered[0]]
-    else:
-      return None
+        collect[item].append( scope[item] )
+    #send the outputs over the pipe
+    pipe.send(collect)
+
 
 class ConstructException(baseTasks.muException):
   def __init__(self, taskname, text):

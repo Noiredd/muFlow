@@ -14,3 +14,11 @@ class TestTaskMultiplyParallel(BaseParallel):
   outputs = ['items']
   def action(self, x, y):
     return x * y
+
+class TestTaskMultipleOutputsParallel(BaseParallel):
+  name = 'simo'
+  params = [('value', float)]
+  inputs = ['item']
+  outputs = ['a', 'b']
+  def action(self, i):
+    return i / self.value, i * self.value
