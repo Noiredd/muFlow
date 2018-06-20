@@ -5,6 +5,7 @@ import os
 import sys
 
 import baseTasks
+import progress
 
 class Assembler(object):
   taskFolder = 'tasks/'
@@ -185,20 +186,19 @@ class MicroFlow(object):
   #quack like a BaseProcessor
   def setup(self, **kwargs):
     #TODO: configurable number of processes
-    #TODO: progress reporting by only one process
+    #TODO: progress reporting configuration
     self.num_proc = 4
+    self.reporter = progress.Reporter('Running parallel tasks', 0.1)
     self.pipes = []
     self.pool = []
     for i in range(self.num_proc):
       a, b = mp.Pipe(True)  #duplex pipe - we send data and receive results
       self.pipes.append(a)
-      self.pool.append(mp.Process(target=self.sequence, args=(b,)))
+      self.pool.append(
+        mp.Process(target=self.sequence, args=(b,) if i > 0 else (b,self.reporter))
+        )
 
   def action(self, *args):
-    #prepare to output items that were requested
-    #results = {}
-    #for item in self.gathered:
-    #  results[item] = []
     #iterate over all args in parallel in such a way that every set of values is a dict
     input_data = [dict(zip(self.map_requests, pack)) for pack in zip(*args)]
     #send each process its share of work and start them
@@ -223,7 +223,7 @@ class MicroFlow(object):
     else:
       return None
   
-  def sequence(self, pipe):
+  def sequence(self, pipe, progress=None):
     #this function is executed by each process separately
     #start by receiving data
     input_data = pipe.recv()
@@ -250,6 +250,8 @@ class MicroFlow(object):
       #if anything from the local scope was marked as gathered - do so
       for item in self.gathered:
         collect[item].append( scope[item] )
+      #report progress, if so requested (disabled by default)
+      if progress is not None: progress(len(input_data))
     #send the outputs over the pipe
     pipe.send(collect)
 
