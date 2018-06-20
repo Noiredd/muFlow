@@ -207,13 +207,15 @@ class MicroFlow(object):
     #send each process its share of work and start them
     batch_size = len(input_data) // self.num_proc + 1
     for i in range(self.num_proc):
-      self.pipes[i].send(input_data[i*batch_size:(i+1)*batch_size])
+      batch = input_data[i*batch_size:(i+1)*batch_size]
+      #self.pipes[i].send(input_data[i*batch_size:(i+1)*batch_size])
       self.pool[i].start()
-    #wait until they are all done
+      self.pipes[i].send(batch)
+    #collect the outputs and wait until the processes are done
+    outputs = [pipe.recv() for pipe in self.pipes]
     for process in self.pool:
       process.join()
-    #receive the outputs and merge them
-    outputs = [pipe.recv() for pipe in self.pipes]
+    #merge the results
     results = {item: [] for item in self.gathered}
     for item in self.gathered:
       for output in outputs:
