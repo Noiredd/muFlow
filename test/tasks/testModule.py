@@ -34,3 +34,9 @@ class TestTaskCreateList(BaseProcessor):
 class TestDebugGetter(BaseProcessor):
   name = 'get'
   inputs = ['item']
+
+class x(BaseProcessor):
+  name='p'
+  inputs=['i']
+  def action(self,x):
+    print(x)

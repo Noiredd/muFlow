@@ -53,8 +53,8 @@ class Assembler(object):
     else:
       raise ConstructException(task_name, 'no such task')
   
-  def assembleFromText(self, lines):
-    flow = MacroFlow()
+  def assembleFromText(self, lines, num_proc=0, report_step=0.1):
+    flow = MacroFlow(num_proc, report_step)
     for n, line in enumerate(lines):
       #more flexibility in IO override text
       if '(' in line:
@@ -73,11 +73,13 @@ class Assembler(object):
     return flow
 
 class MacroFlow(object):
-  def __init__(self):
+  def __init__(self, num_proc=0, report_step=0.1):
     self.tasks = [] #tasks are executed in order
     self.scope = {} #place where the intermediate results are contained
     self.micros = []      #potential outputs of MicroFlows; list of tuples
     self.parallel = None  #MicroFlow object during construction
+    self.num_proc = num_proc
+    self.report_step = report_step
   
   def appendSerial(self, task, isMicro=False):
     #append a serial task to the execution list
@@ -115,7 +117,7 @@ class MacroFlow(object):
   def appendParallel(self, task):
     if self.parallel is None:
       #we're only starting to construct a parallelized task set
-      self.parallel = MicroFlow(self.scope) #let the sub-flow know what items do we already have
+      self.parallel = MicroFlow(self.scope, self.num_proc, self.report_step)
     self.parallel.append(task)
   
   def completeParallel(self):
@@ -149,13 +151,15 @@ class MacroFlow(object):
     return self.scope
 
 class MicroFlow(object):
-  def __init__(self, macro_scope):
+  def __init__(self, macro_scope, num_proc=0, report_step=0.1):
     self.tasks = []
     self.gathered = []
     self.macro_scope = macro_scope
     self.micro_scope = set()  #just for building phase
     self.map_requests = []  #those items aren't produced by either of the local tasks
-  
+    self.num_proc = num_proc if num_proc > 0 else mp.cpu_count()
+    self.report_step = report_step
+    
   def append(self, task):
     requests = task.getInputs()
     for request in requests:
@@ -185,10 +189,7 @@ class MicroFlow(object):
 
   #quack like a BaseProcessor
   def setup(self, **kwargs):
-    #TODO: configurable number of processes
-    #TODO: progress reporting configuration
-    self.num_proc = 4
-    self.reporter = progress.Reporter('Running parallel tasks', 0.1)
+    self.reporter = progress.Reporter('Running parallel tasks', self.report_step)
     self.pipes = []
     self.pool = []
     for i in range(self.num_proc):
