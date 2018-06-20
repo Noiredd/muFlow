@@ -197,6 +197,9 @@ class MicroFlow(object):
       self.pool.append(
         mp.Process(target=self.sequence, args=(b,) if i > 0 else (b,self.reporter))
         )
+    #setup the parallel tasks
+    for task in self.tasks:
+      task.setup()
 
   def action(self, *args):
     #iterate over all args in parallel in such a way that every set of values is a dict

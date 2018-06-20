@@ -76,6 +76,25 @@ class TestAssemblerAdvanced(unittest.TestCase):
 
 class TestMicroFlow(unittest.TestCase):
   #Parallel tasks cannot be tested in baseTaskTest as they rely on MicroFlow
+  def test_parallelSetup(self):
+    class TaskParallelSetupTest(bt.BaseParallel):
+      inputs = ['items']
+      outputs = ['items']
+      val = 1
+      def setup(self, **kwargs):
+        self.val += 1
+      def action(self, x):
+        return x * self.val
+    pTask = TaskParallelSetupTest()
+    test_data = [1, 2, 1, 3, 1]
+    expected  = [2, 4, 2, 6, 2]
+    scope = {'items': test_data}
+    uFlow = asm.MicroFlow(scope)
+    uFlow.append(pTask)
+    uFlow.gather('items')
+    uFlow.setup()
+    result = uFlow.action(scope['items'])
+    self.assertEqual(result, expected)
   def test_parallelSimple(self):
     class TaskParallelSimple(bt.BaseParallel):
       inputs = ['items']
