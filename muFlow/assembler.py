@@ -53,8 +53,8 @@ class Assembler(object):
     else:
       raise ConstructException(task_name, 'no such task')
   
-  def assembleFromText(self, lines, num_proc=0, report_step=0.1):
-    flow = MacroFlow(num_proc, report_step)
+  def assembleFromText(self, lines, num_proc=0, report_step=0.1, debug=False):
+    flow = MacroFlow(num_proc=num_proc, report_step=report_step, debug=debug)
     for n, line in enumerate(lines):
       #more flexibility in IO override text
       if '(' in line:
@@ -73,7 +73,8 @@ class Assembler(object):
     return flow
 
 class MacroFlow(object):
-  def __init__(self, num_proc=0, report_step=0.1):
+  def __init__(self, num_proc=0, report_step=0.1, debug=False):
+    self.debug = debug
     self.tasks = [] #tasks are executed in order
     self.scope = {} #place where the intermediate results are contained
     self.micros = []      #potential outputs of MicroFlows; list of tuples
@@ -117,7 +118,11 @@ class MacroFlow(object):
   def appendParallel(self, task):
     if self.parallel is None:
       #we're only starting to construct a parallelized task set
-      self.parallel = MicroFlow(self.scope, self.num_proc, self.report_step)
+      self.parallel = MicroFlow(macro_scope=self.scope,
+                                num_proc=self.num_proc,
+                                report_step=self.report_step,
+                                debug=self.debug
+      )
     self.parallel.append(task)
   
   def completeParallel(self):
@@ -151,7 +156,8 @@ class MacroFlow(object):
     return self.scope
 
 class MicroFlow(object):
-  def __init__(self, macro_scope, num_proc=0, report_step=0.1):
+  def __init__(self, macro_scope, num_proc=0, report_step=0.1, debug=False):
+    self.debug = debug
     self.tasks = []
     self.gathered = []
     self.macro_scope = macro_scope
@@ -159,6 +165,8 @@ class MicroFlow(object):
     self.map_requests = []  #those items aren't produced by either of the local tasks
     self.num_proc = num_proc if num_proc > 0 else mp.cpu_count()
     self.report_step = report_step
+    if self.debug:
+      self.num_proc = 1
     
   def append(self, task):
     requests = task.getInputs()
@@ -197,7 +205,7 @@ class MicroFlow(object):
       self.pipes.append(a)
       self.pool.append(
         mp.Process(target=self.sequence, args=(b,) if i > 0 else (b,self.reporter))
-        )
+      )
     #setup the parallel tasks
     for task in self.tasks:
       task.setup()
@@ -205,6 +213,8 @@ class MicroFlow(object):
   def action(self, *args):
     #iterate over all args in parallel in such a way that every set of values is a dict
     input_data = [dict(zip(self.map_requests, pack)) for pack in zip(*args)]
+    if self.debug:
+      input_data = [input_data[0]]
     #send each process its share of work and start them
     batch_size = len(input_data) // self.num_proc + 1
     for i in range(self.num_proc):
