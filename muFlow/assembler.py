@@ -86,8 +86,8 @@ class Assembler(object):
   def preventVT100(self):
     progress.useVT100(False)
 
-  def assembleFromText(self, lines, num_proc=0, report_step=0.1, debug=False):
-    flow = MacroFlow(num_proc=num_proc, report_step=report_step, debug=debug)
+  def assembleFromText(self, lines, num_proc=0, debug=False):
+    flow = MacroFlow(num_proc=num_proc, debug=debug)
     for n, line in enumerate(lines):
       #more flexibility in IO override text
       if '(' in line:
@@ -106,14 +106,13 @@ class Assembler(object):
     return flow
 
 class MacroFlow(object):
-  def __init__(self, num_proc=0, report_step=0.1, debug=False):
+  def __init__(self, num_proc=0, debug=False):
     self.debug = debug
     self.tasks = [] #tasks are executed in order
     self.scope = {} #place where the intermediate results are contained
     self.micros = []      #potential outputs of MicroFlows; list of tuples
     self.parallel = None  #MicroFlow object during construction
     self.num_proc = num_proc
-    self.report_step = report_step
   
   def appendSerial(self, task, isMicro=False):
     #append a serial task to the execution list
@@ -153,7 +152,6 @@ class MacroFlow(object):
       #we're only starting to construct a parallelized task set
       self.parallel = MicroFlow(macro_scope=self.scope,
                                 num_proc=self.num_proc,
-                                report_step=self.report_step,
                                 debug=self.debug
       )
     self.parallel.append(task)
@@ -166,11 +164,16 @@ class MacroFlow(object):
       self.appendSerial(task, isMicro=True) #treat it *almost* as a serial task
   
   def execute(self):
+    #measure time and print reports using external object
+    reporter = progress.SerialReporter()
     #start with setting up each task
+    reporter.start('Setting up...')
     for task in self.tasks:
       task.setup()
+    reporter.stop()
     #execute the task list in order
     for task in self.tasks:
+      reporter.start('Task: ' + task.name)
       #query each task for its required inputs and retrieve their values from the scope
       inputs = [self.scope[i] for i in task.getInputs()]
       #feed them to the task and run it
@@ -186,10 +189,13 @@ class MacroFlow(object):
         self.scope[outputs[0]] = results
       else:
         pass
+      reporter.stop()
+    reporter.total('Done!')
     return self.scope
 
 class MicroFlow(object):
-  def __init__(self, macro_scope, num_proc=0, report_step=0.1, debug=False):
+  def __init__(self, macro_scope, num_proc=0, debug=False):
+    self.name  = 'MicroFlow'
     self.debug = debug
     self.tasks = []
     self.gathered = []
@@ -197,10 +203,18 @@ class MicroFlow(object):
     self.micro_scope = set()  #just for building phase
     self.map_requests = []  #those items aren't produced by either of the local tasks
     self.num_proc = num_proc if num_proc > 0 else mp.cpu_count()
-    self.report_step = report_step
     if self.debug:
       self.num_proc = 1
-    
+
+  def __makeName(self):
+    #builds a name string from tasks on the list - best call that at setup
+    #shortens the list longer than 5 tasks
+    if len(self.tasks) > 5:
+      _name = self.tasks[0].name + ', ' + self.tasks[1].name + ', ... , ' + self.tasks[-1].name
+    else:
+      _name = ', '.join([task.name for task in self.tasks])
+    self.name += ' (' + _name + ')'
+  
   def append(self, task):
     requests = task.getInputs()
     for request in requests:
@@ -230,7 +244,9 @@ class MicroFlow(object):
 
   #quack like a BaseProcessor
   def setup(self, **kwargs):
-    self.reporter = progress.Reporter('Running parallel tasks', self.report_step)
+    #task list is complete so we can construct the name string
+    self.__makeName()
+    self.reporter = progress.ParallelReporter('Task: ' + self.name)
     self.pipes = []
     self.pool = []
     for i in range(self.num_proc):
