@@ -1,9 +1,10 @@
+VT100_FLAG = True
+VT100_DELETE_LINE = '\x1b[1A' + '\x1b[2K' + '\x1b[1A'
+
 class Reporter(object):
   #a callable object that keeps track of the number of times it has been called
   #and, given the total number of times it is going to be called, every some
   #percent of the calls, prints some progress reports
-  DELETE_LINE = '\x1b[1A' + '\x1b[2K' + '\x1b[1A'
-
   def __init__(self, text, percent_step):
     self.message = text
     self.p_step  = percent_step * 1.0
@@ -35,7 +36,11 @@ class Reporter(object):
     while self.steps is not None and percent >= self.steps[0]:
       #while instead of if in case there are very few elements but requested
       #reporting frequency is relatively large (so we can skip over the steps)
-      print(self.DELETE_LINE)
+      if VT100_FLAG: print(VT100_DELETE_LINE)
       print(self.message + ', {:3.0f}% done '.format(100*self.steps[0]))
       #pop the first item to mark this percentage as reported
       del self.steps[0]
+
+def useVT100(flag):
+  global VT100_FLAG
+  VT100_FLAG = True if flag else False

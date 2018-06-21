@@ -83,6 +83,9 @@ class Assembler(object):
       for task in sorted(self.tasks_parallel.keys()):
         print('\t' + task)
 
+  def preventVT100(self):
+    progress.useVT100(False)
+
   def assembleFromText(self, lines, num_proc=0, report_step=0.1, debug=False):
     flow = MacroFlow(num_proc=num_proc, report_step=report_step, debug=debug)
     for n, line in enumerate(lines):
