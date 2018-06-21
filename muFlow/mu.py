@@ -12,11 +12,23 @@ if __name__ == "__main__":
       help='Report parallel task progress every so often (0 or negative disables')
   p.add_argument('--debug', action='store_true',
       help='Debug mode: each parallel task processes only the first item in a single process')
-  #TODO p.add_argument('--task-list', action='store_true', help='Print list of available tasks')
+  p.add_argument('--list', action='store_true', help='Print list of available tasks')
+  p.add_argument('--info', type=str, help='Print more detailed info on a specific task')
 
   asm = Assembler()
 
+  if '--list' in sys.argv:
+    asm.printInfo()
+    exit()
+  if '--info' in sys.argv:
+    info = sys.argv[sys.argv.index('--info') + 1]
+    asm.printInfo(info)
+    exit()
+
   args = p.parse_args()
+  if args.info is not None:
+    asm.printInfo(args.info)
+    exit()
 
   with open(args.script, 'r') as script_file:
     script = [line.strip('\n') for line in script_file.readlines()]

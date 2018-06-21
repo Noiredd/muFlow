@@ -53,6 +53,36 @@ class Assembler(object):
     else:
       raise ConstructException(task_name, 'no such task')
   
+  def printTaskDetails(self, task):
+    s = lambda x: str(x).split("'")[1]
+    print('\t{}'.format(task.info))
+    print('\tParams:  {}'.format(len(task.params)))
+    if len(task.params) > 0:
+      for param in task.params:
+        print('\t\t{:10}({})'.format(param[0], s(param[1])))
+    print('\tInputs:  {}, default: {}'.format(len(task.inputs), ','.join(task.inputs)))
+    print('\tOutputs: {}, default: {}'.format(len(task.outputs), ','.join(task.outputs)))
+
+  def printInfo(self, task_=None):
+    if task_ is not None:
+      if task_ in self.tasks_serial:
+        task = self.tasks_serial[task_]
+        print('{} [serial]'.format(task.name))
+        self.printTaskDetails(task)
+      elif task_ in self.tasks_parallel:
+        task = self.tasks_parallel[task_]
+        print('{} [parallel]'.format(task.name))
+        self.printTaskDetails(task)
+      else:
+        print('There is no task "{}".'.format(task_))
+    else:
+      print('List of available serial tasks:')
+      for task in sorted(self.tasks_serial.keys()):
+        print('\t{:10}'.format(task))
+      print('List of available parallel tasks:')
+      for task in sorted(self.tasks_parallel.keys()):
+        print('\t' + task)
+
   def assembleFromText(self, lines, num_proc=0, report_step=0.1, debug=False):
     flow = MacroFlow(num_proc=num_proc, report_step=report_step, debug=debug)
     for n, line in enumerate(lines):
