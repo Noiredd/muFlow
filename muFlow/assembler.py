@@ -298,13 +298,10 @@ class MicroFlow(object):
     #prepare to gather the outputs
     collect = {item: [] for item in self.gathered}
     #iterate over it, executing the task sequence
-    for this_scope in input_data:
-      #local, non-persistent scope
-      scope = {}
+    for scope in input_data:
       #iterate over the sequence of tasks
       for task in self.tasks:
-        #collect inputs, either from the global or local scope
-        inputs = [this_scope[req] if req in self.map_requests else scope[req] for req in task.getInputs()]
+        inputs = [scope[req] for req in task.getInputs()]
         results = task.action(*inputs) if inputs is not [] else task.action()
         #pack outputs back but into the micro scope
         outputs = task.getOutputs()
