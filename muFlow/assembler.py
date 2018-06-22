@@ -263,15 +263,13 @@ class MicroFlow(object):
       task.setup()
 
   def action(self, *args):
-    #iterate over all args in parallel in such a way that every set of values is a dict
-    input_data = [dict(zip(self.map_requests, pack)) for pack in zip(*args)]
-    if self.debug:
-      input_data = [input_data[0]]
-    #send each process its share of work and start them
-    batch_size = len(input_data) // self.num_proc + 1
+    #args are lists (assumed of equal size) which need to be cut into slices
+    #for each of the processes and sent to them as soon as they are started
+    batch_size = (len(args[0]) // self.num_proc + 1) if not self.debug else 1
     for i in range(self.num_proc):
-      batch = input_data[i*batch_size:(i+1)*batch_size]
-      #self.pipes[i].send(input_data[i*batch_size:(i+1)*batch_size])
+      n_beg = i * batch_size
+      n_end = n_beg + batch_size
+      batch = [arg[n_beg:n_end] for arg in args]
       self.pool[i].start()
       self.pipes[i].send(batch)
     #collect the outputs and wait until the processes are done
@@ -293,12 +291,14 @@ class MicroFlow(object):
   
   def sequence(self, pipe, progress=None):
     #this function is executed by each process separately
-    #start by receiving data
+    #start by receiving data (list of args, each being a list)
     input_data = pipe.recv()
     #prepare to gather the outputs
     collect = {item: [] for item in self.gathered}
-    #iterate over it, executing the task sequence
-    for scope in input_data:
+    #iterate over lists that make up the input data
+    for data in zip(*input_data):
+      #construct a local scope
+      scope = dict(zip(self.map_requests, data))
       #iterate over the sequence of tasks
       for task in self.tasks:
         inputs = [scope[req] for req in task.getInputs()]
@@ -316,7 +316,7 @@ class MicroFlow(object):
       for item in self.gathered:
         collect[item].append( scope[item] )
       #report progress, if so requested (disabled by default)
-      if progress is not None: progress(len(input_data))
+      if progress is not None: progress(len(input_data[0]))
     #send the outputs over the pipe
     pipe.send(collect)
 
