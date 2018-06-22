@@ -13,6 +13,7 @@ if __name__ == "__main__":
   p.add_argument('--list', action='store_true', help='Print list of available tasks')
   p.add_argument('--info', type=str, help='Print more detailed info on a specific task')
   p.add_argument('--no-vt', action='store_true', help='Do not use VT100 escape codes')
+  p.add_argument('--no-log', action='store_true', help='Do not print logs and time measurements')
 
   asm = Assembler()
 
@@ -28,6 +29,8 @@ if __name__ == "__main__":
 
   if args.no_vt:
     asm.preventVT100()
+  if args.no_log:
+    asm.preventLogging()
 
   with open(args.script, 'r') as script_file:
     script = [line.strip('\n') for line in script_file.readlines()]

@@ -85,6 +85,9 @@ class Assembler(object):
 
   def preventVT100(self):
     progress.useVT100(False)
+  
+  def preventLogging(self):
+    progress.usePrint(False)
 
   def assembleFromText(self, lines, num_proc=0, debug=False):
     flow = MacroFlow(num_proc=num_proc, debug=debug)
