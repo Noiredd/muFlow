@@ -152,6 +152,13 @@ class BaseParallel(BaseProcessor):
     super(BaseParallel, self).__init__(*args)
 
 
+class muException(Exception):
+  def __init__(self, message):
+    super(muException, self).__init__(self.message)
+  def die(self):
+    print('{}: {}'.format(self.__class__.__name__, self.message))
+    exit()
+
 class BadParamException(muException):
   def __init__(self, taskname, param, text):
     self.message = param[0] + ' ' + text + ' (' + taskname + ')'

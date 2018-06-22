@@ -32,7 +32,7 @@ class Assembler(object):
           try:
             obj.validateParams()
           except baseTasks.BadParamException as e:
-            print(e.message, '- skipping import')
+            print(e.message + ' - skipping import')
           else:
             #any task that reached this point is good to go, regardless of what kind it was
             #but now it matters whether it's parallel or serial

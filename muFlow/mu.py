@@ -2,6 +2,7 @@ import argparse
 import sys
 
 from assembler import Assembler
+from baseTasks import muException
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser(description='muFlow, the parallel processing engine')
@@ -34,8 +35,12 @@ if __name__ == "__main__":
 
   with open(args.script, 'r') as script_file:
     script = [line.strip('\n') for line in script_file.readlines()]
-  flow = asm.assembleFromText(lines=script,
-                              num_proc=args.num_processes,
-                              debug=args.debug
-  )
+  try:
+    flow = asm.assembleFromText(lines=script,
+                                num_proc=args.num_processes,
+                                debug=args.debug
+    )
+  except muException as e:
+    e.die()
+  
   flow.execute()
