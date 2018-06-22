@@ -92,6 +92,9 @@ class Assembler(object):
   def assembleFromText(self, lines, num_proc=0, debug=False):
     flow = MacroFlow(num_proc=num_proc, debug=debug)
     for n, line in enumerate(lines):
+      #allow commenting out things
+      if line.startswith('#') or line.startswith('//'):
+        continue
       #more flexibility in IO override text
       if '(' in line:
         if line.count('(') > 1 or line.count(')') != 1:
