@@ -12,19 +12,44 @@ class BaseProcessor(object):
   params = []
   inputs = []
   outputs = []
+  isValid = False
   
   def __init__(self, *args):
+    #if the task has not been yet validated - now is the time
+    if not self.isValid:
+      self.validateParams()
+    #parse the IO specification, if present, and remove it from the args list
     thereWasIOSpec = self.__parseIOSpec(*args)
     if thereWasIOSpec:
-      args = args[1:] #if the first element *was* an IO spec - remove it
+      args = args[1:]
     self.__parseArgs(*args)
   
   @classmethod
   def validateParams(cls):
-    #make sure params have 2 elements
+    #make sure params have a proper layout:
+    #(name, type[, default value])  - def val only allowed at end
+    cls.requiredArgs = 0
+    cls.maximumArgs  = 0
+    def itsRequired(cls):
+      cls.requiredArgs += 1
+      cls.maximumArgs  += 1
+    def itsDefault(cls):
+      cls.maximumArgs  += 1
+    onDefault = False
     for param in cls.params:
-      if len(param) != 2:
+      l = len(param)
+      if l not in (2, 3):
         raise BadParamException(cls.name, param, 'is incorrect format')
+      if not onDefault:
+        if l == 3:
+          onDefault = True
+          itsDefault(cls)
+        else:
+          itsRequired(cls)
+      else:
+        itsDefault(cls)
+        if l < 3:
+          raise BadParamException(cls.name, param, 'misses default value')
     #make sure the class itself uses no forbidden words in its params
     #(otherwise, parsing args might result in overwriting some members)
     forbidden = BaseProcessor.__dict__.keys()
@@ -40,6 +65,15 @@ class BaseProcessor(object):
       except ValueError:
         #don't care about being unable to actually convert the string
         pass
+    #make sure defaults are convertible to given types
+    for param in cls.params:
+      if len(param) == 3:
+        try:
+          param[1]( param[2] )
+        except TypeError:
+          raise BadParamException(cls.name, param, 'cannot convert default value')
+        except ValueError:
+          raise BadParamException(cls.name, param, 'bad default value')
     #nothing needs to be returned - if this completes, we're good
   
   def __parseIOSpec(self, *args):
@@ -78,14 +112,19 @@ class BaseProcessor(object):
     return True #parsed inputs
   
   def __parseArgs(self, *args):
-    #make sure we get the right number of arguments
-    required_param_count = len(self.params)
-    if len(args) < required_param_count:
+    #ensure the right number of arguments, optionally fill with defaults
+    defs = ()
+    if len(args) < self.requiredArgs:
       raise ArgsListException(self.name, 'not enough arguments')
-    elif len(args) > required_param_count:
-      raise ArgsListException(self.name, 'too many arguments')
+    else:
+      if len(args) > self.maximumArgs:
+        raise ArgsListException(self.name, 'too many arguments')
+      elif len(args) < self.maximumArgs:
+        defaults = [p[2] for p in self.params if len(p)>2]
+        overlap = len(defaults) - self.maximumArgs + len(args)
+        defs = tuple(defaults[overlap:])
     #parse and assign to the object
-    for arg, param in zip(args, self.params):
+    for arg, param in zip(args+defs, self.params):
       arg_name = param[0]
       arg_type = param[1]
       try:
