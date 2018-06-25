@@ -2,7 +2,6 @@
 import sys
 if sys.version_info < (3,0):
   from exceptions import Exception
-muException = Exception
 #####Python 2 and 3 compatibility#####
 
 class BaseProcessor(object):

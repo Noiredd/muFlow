@@ -13,7 +13,13 @@ class Assembler(object):
   tasks_parallel = {}
   
   def __init__(self, altPath=None):
-    self.__importTasks(self.taskFolder if altPath is None else altPath)
+    if altPath is None:
+      thisDir = os.path.dirname(os.path.abspath(__file__))
+      rootDir, _ = os.path.split(thisDir)
+      self.taskFolder = os.path.join(rootDir, 'tasks')
+    else:
+      self.taskFolder = altPath
+    self.__importTasks(self.taskFolder)
   
   def __importTasks(self, path):
     if not path.endswith('/'): path += '/'
