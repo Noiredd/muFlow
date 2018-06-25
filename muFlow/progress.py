@@ -17,7 +17,7 @@ class ParallelReporter(object):
   def setup(self, n):
     self.total = n
     self.count = 0
-    self.start = time.clock()
+    self.start = time.time()
     self.last  = self.start
     self.isSet = True
   
@@ -33,14 +33,14 @@ class ParallelReporter(object):
     #keep track of the number of processed items
     self.count += 1
     #check whether a full second elapsed since the last call
-    if time.clock() - self.last > 1.0:
+    if time.time() - self.last > 1.0:
       #calculate % of work done and print
       percent = 1.0 * self.count / self.total
       if PRINT_FLAG:
         if VT100_FLAG: print(VT100_DELETE_LINE)
         print(self.message + ', {:3.0f}% done '.format(100*percent))
       #log the last call time
-      self.last = time.clock()
+      self.last = time.time()
 
 class SerialReporter(object):
   #keeps track of time, allowing measuring time taken by a sequence of tasks
@@ -51,12 +51,12 @@ class SerialReporter(object):
   def __init__(self):
     self.task_text = ''
     self.task_time = None
-    self.birth = time.clock()
+    self.birth = time.time()
   
   def start(self, task_text):
     global PRINT_FLAG
     self.task_text = task_text
-    self.task_time = time.clock()
+    self.task_time = time.time()
     if PRINT_FLAG:
       print(self.task_text)
   
@@ -68,16 +68,17 @@ class SerialReporter(object):
     global VT100_FLAG
     global VT100_DELETE_LINE
     if self.task_time is not None:
-      taken = time.clock() - self.task_time
+      taken = time.time() - self.task_time
       if PRINT_FLAG:
         if VT100_FLAG:
           print(VT100_DELETE_LINE)
         self.__print_event(self.task_text, taken)
-      self.task_time = None
+      #self.task_time = None
+      return taken
 
   def total(self, message=None):
     global PRINT_FLAG
-    taken = time.clock() - self.birth
+    taken = time.time() - self.birth
     if message is not None and PRINT_FLAG:
       self.__print_event(message, taken)
     return taken
