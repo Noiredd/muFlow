@@ -49,7 +49,17 @@ class Assembler(object):
   
   def constructTask(self, text):
     #parses a given text (line) and attempts to construct a task from it
-    args = text.split()
+    #allow commenting out parts of a line
+    hashpos = text.find('#')
+    if hashpos > 0:
+      text = text[:hashpos]
+    slshpos = text.find('//')
+    if slshpos > 0:
+      text = text[:slshpos]
+    #allow escaping spaces with '\ '
+    text = text.replace('\\ ', '\0')
+    args = [t.replace('\0', ' ') for t in text.split()]
+    #leave parsing the specific arguments to tasks
     task_name = args[0]
     task_args = args[1:]
     if task_name in self.tasks_serial.keys():
