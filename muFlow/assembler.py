@@ -75,7 +75,8 @@ class Assembler(object):
     print('\tParams:  {}'.format(len(task.params)))
     if len(task.params) > 0:
       for param in task.params:
-        print('\t\t{:10}({})'.format(param[0], s(param[1])))
+        default = lambda x: '' if len(x) < 3 else ', default = {}'.format(x[2])
+        print('\t\t{:10}({}){}'.format(param[0], s(param[1]), default(param)))
     print('\tInputs:  {}, default: {}'.format(len(task.inputs), ','.join(task.inputs)))
     print('\tOutputs: {}, default: {}'.format(len(task.outputs), ','.join(task.outputs)))
 
