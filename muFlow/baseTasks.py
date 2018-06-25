@@ -158,6 +158,11 @@ class muException(Exception):
     print('{}: {}'.format(self.__class__.__name__, self.message))
     exit()
 
+class UserException(muException):
+  def __init__(self, taskname, message):
+    self.message = '[{}]: {}'.format(taskname, message)
+    super(UserException, self).__init__(self.message)
+
 class BadParamException(muException):
   def __init__(self, taskname, param, text):
     self.message = param[0] + ' ' + text + ' (' + taskname + ')'

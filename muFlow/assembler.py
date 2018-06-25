@@ -180,8 +180,11 @@ class MacroFlow(object):
     reporter = progress.SerialReporter()
     #start with setting up each task
     reporter.start('Setting up...')
-    for task in self.tasks:
-      task.setup()
+    try:
+      for task in self.tasks:
+        task.setup()
+    except baseTasks.muException as e:
+      e.die()
     reporter.stop()
     #execute the task list in order
     for task in self.tasks:
