@@ -40,6 +40,8 @@ class Assembler(object):
           except baseTasks.BadParamException as e:
             print(e.message + ' - skipping import')
           else:
+            #add a string attribute identifying which module did the task come from
+            obj.module = module
             #any task that reached this point is good to go, regardless of what kind it was
             #but now it matters whether it's parallel or serial
             if issubclass(obj, baseTasks.BaseParallel):
@@ -84,21 +86,26 @@ class Assembler(object):
     if task_ is not None:
       if task_ in self.tasks_serial:
         task = self.tasks_serial[task_]
-        print('{} [serial]'.format(task.name))
+        print('{} [{}.py] (serial)'.format(task.name, task.module))
         self.printTaskDetails(task)
       elif task_ in self.tasks_parallel:
         task = self.tasks_parallel[task_]
-        print('{} [parallel]'.format(task.name))
+        print('{} [{}.py] (parallel)'.format(task.name, task.module))
         self.printTaskDetails(task)
       else:
         print('There is no task "{}".'.format(task_))
     else:
+      sTasks = sorted(self.tasks_serial.keys())
+      pTasks = sorted(self.tasks_parallel.keys())
+      maxlen = max([len(task) for task in sTasks+pTasks])
       print('List of available serial tasks:')
-      for task in sorted(self.tasks_serial.keys()):
-        print('\t{:10}'.format(task))
+      for task in sTasks:
+        print('\t{:{pad}}  [{mod}.py]'.format(task, pad=maxlen,
+            mod=self.tasks_serial[task].module))
       print('List of available parallel tasks:')
-      for task in sorted(self.tasks_parallel.keys()):
-        print('\t' + task)
+      for task in pTasks:
+        print('\t{:{pad}}  [{mod}.py]'.format(task, pad=maxlen,
+            mod=self.tasks_parallel[task].module))
 
   def preventVT100(self):
     progress.useVT100(False)
