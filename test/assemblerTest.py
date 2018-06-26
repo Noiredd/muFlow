@@ -38,6 +38,31 @@ class TestAssemblerBasics(unittest.TestCase):
     self.assertIsInstance(flow, asm.MacroFlow)
     self.assertEqual(len(flow.tasks), 1)
     self.assertEqual(flow.execute()['item'], 2)
+  def test_commentHashBegin(self):
+    text = ['src 3', 'add 2', '#add 2']
+    flow = self.a.assembleFromText(text)
+    self.assertEqual(len(flow.tasks), 2)
+    self.assertEqual(flow.execute()['item'], 5)
+  def test_commentHashMiddle(self):
+    text = ['src 3', 'add 2', 'add 2 #3']
+    flow = self.a.assembleFromText(text)
+    self.assertEqual(len(flow.tasks), 3)
+    self.assertEqual(flow.execute()['item'], 7)
+  def test_commentSlashBegin(self):
+    text = ['src 3', '//add 2', 'add 2']
+    flow = self.a.assembleFromText(text)
+    self.assertEqual(len(flow.tasks), 2)
+    self.assertEqual(flow.execute()['item'], 5)
+  def test_commentSlashMiddle(self):
+    text = ['src 3', 'add 2 // 4', 'add 2']
+    flow = self.a.assembleFromText(text)
+    self.assertEqual(len(flow.tasks), 3)
+    self.assertEqual(flow.execute()['item'], 7)
+  def test_tolerateEmptyLines(self):
+    text = ['src 3', '', 'add 2']
+    flow = self.a.assembleFromText(text)
+    self.assertEqual(len(flow.tasks), 2)
+    self.assertEqual(flow.execute()['item'], 5)
   def test_assembleMulti(self):
     flow = self.a.assembleFromText(['src 2', 'add 1', 'add 2'])
     self.assertEqual(flow.execute()['item'], 5)

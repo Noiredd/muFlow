@@ -53,14 +53,17 @@ class Assembler(object):
     #parses a given text (line) and attempts to construct a task from it
     #allow commenting out parts of a line
     hashpos = text.find('#')
-    if hashpos > 0:
+    if hashpos >= 0:
       text = text[:hashpos]
     slshpos = text.find('//')
-    if slshpos > 0:
+    if slshpos >= 0:
       text = text[:slshpos]
     #allow escaping spaces with '\ '
     text = text.replace('\\ ', '\0')
     args = [t.replace('\0', ' ') for t in text.split()]
+    #allow empty lines as legal but no-op
+    if len(args) < 1:
+      return False, None
     #leave parsing the specific arguments to tasks
     task_name = args[0]
     task_args = args[1:]
@@ -116,10 +119,7 @@ class Assembler(object):
   def assembleFromText(self, lines, num_proc=0, debug=False):
     flow = MacroFlow(num_proc=num_proc, debug=debug)
     for n, line in enumerate(lines):
-      #allow commenting out things
-      if line.startswith('#') or line.startswith('//'):
-        continue
-      #more flexibility in IO override text
+      #more robustness allows some flexibility in IO override text
       if '(' in line:
         if line.count('(') > 1 or line.count(')') != 1:
           raise ConstructException('line {}: '.format(n), 'unbalanced brackets')
@@ -128,6 +128,9 @@ class Assembler(object):
         btwn, post = btwn.split(')')
         line = despace(pre) + ' (' + despace(btwn) + ') ' + post
       isSerial, task = self.constructTask(line)
+      #tolerate a no-output from constructor
+      if task is None:
+        continue
       if isSerial:
         flow.appendSerial(task)
       else:
