@@ -99,6 +99,9 @@ class BaseProcessor(object):
         raise ParseIOSpecException(self.name, 'input spec length mismatch: ' +
               'expected {}, received {}'.format(len(self.inputs), len(io_in)))
       else:
+        #for tasks that work "in-place", change the output as well
+        if self.inputs == self.outputs:
+          self.outputs = io_in
         self.inputs = io_in
     #output override
     if io_out_ != '':

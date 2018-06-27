@@ -157,6 +157,11 @@ class TestParsing(unittest.TestCase):
       outputs = ['out']
     self.IOTaskInOut = IOTaskInOut
     self.IOTaskInOut.validateParams()
+    class IOTaskInPlace(bt.BaseProcessor):
+      inputs = ['image']
+      outputs = ['image']
+    self.IOTaskInPlace = IOTaskInPlace
+    self.IOTaskInPlace.validateParams()
   #argument counting
   def test_notEnoughArgs(self):
     with self.assertRaises(bt.ArgsListException):
@@ -220,6 +225,12 @@ class TestParsing(unittest.TestCase):
     task = self.IOTaskInOut('(a,b->c)')
     expected_inputs = ['a', 'b']
     expected_outputs = ['c']
+    self.assertEqual(expected_inputs, task.getInputs())
+    self.assertEqual(expected_outputs, task.getOutputs())
+  def test_parseInPlace(self):
+    task = self.IOTaskInPlace('(items)')
+    expected_inputs = ['items']
+    expected_outputs = ['items']
     self.assertEqual(expected_inputs, task.getInputs())
     self.assertEqual(expected_outputs, task.getOutputs())
 
