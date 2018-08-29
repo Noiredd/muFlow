@@ -242,7 +242,7 @@ class MacroFlow(object):
       #query each task for its required inputs and retrieve their values from the scope
       inputs = [self.scope[i] for i in task.getInputs()]
       #feed them to the task and run it
-      results = task.action(*inputs) if inputs is not [] else task.action()
+      results = task.action(*inputs)
       #pack the output back to the scope
       #mind that if there's a single output, it will be passed as is,
       #but multiple outputs will be packed into a tuple
@@ -368,7 +368,7 @@ class MicroFlow(object):
       #iterate over the sequence of tasks
       for task in self.tasks:
         inputs = [scope[req] for req in task.getInputs()]
-        results = task.action(*inputs) if inputs is not [] else task.action()
+        results = task.action(*inputs)
         #pack outputs back but into the micro scope
         outputs = task.getOutputs()
         if len(outputs) > 1:
