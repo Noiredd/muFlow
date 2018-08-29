@@ -244,16 +244,11 @@ class MacroFlow(object):
       #feed them to the task and run it
       results = task.action(*inputs)
       #pack the output back to the scope
-      #mind that if there's a single output, it will be passed as is,
-      #but multiple outputs will be packed into a tuple
+      #mind that if a task returns multiple items, they are automatically packed into
+      #a tuple, while a single item is packed as is and should not be iterated over
       outputs = task.getOutputs()
-      if len(outputs) > 1:
-        for result, key in zip(results, outputs):
-          self.scope[key] = result
-      elif len(outputs) == 1:
-        self.scope[outputs[0]] = results
-      else:
-        pass
+      for result, key in zip(results if len(outputs) > 1 else (results,), outputs):
+        self.scope[key] = result
       reporter.stop()
     reporter.total('Done!')
     return self.scope
@@ -371,13 +366,8 @@ class MicroFlow(object):
         results = task.action(*inputs)
         #pack outputs back but into the micro scope
         outputs = task.getOutputs()
-        if len(outputs) > 1:
-          for result, key in zip(results, outputs):
-            scope[key] = result
-        elif len(outputs) == 1:
-          scope[outputs[0]] = results
-        else:
-          pass
+        for result, key in zip(results if len(outputs) > 1 else (results,), outputs):
+          scope[key] = result
       #if anything from the local scope was marked as gathered - do so
       for item in self.gathered:
         collect[item].append( scope[item] )
