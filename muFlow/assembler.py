@@ -100,6 +100,10 @@ class Assembler(object):
         task = self.tasks_serial[task_]
         print('{} [{}.py] (serial)'.format(task.name, task.module))
         self.printTaskDetails(task)
+      elif task_ in self.tasks_reducer:
+        task = self.tasks_reducer[task_]
+        print('{} [{}.py] (reducer)'.format(task.name, task.module))
+        self.printTaskDetails(task)
       elif task_ in self.tasks_parallel:
         task = self.tasks_parallel[task_]
         print('{} [{}.py] (parallel)'.format(task.name, task.module))
@@ -107,17 +111,24 @@ class Assembler(object):
       else:
         print('There is no task "{}".'.format(task_))
     else:
+      def __info(t, m):
+        print('\t{:{pad}}  [{mod}.py]'.format(t, pad=maxlen,  mod=m))
       sTasks = sorted(self.tasks_serial.keys())
+      rTasks = sorted(self.tasks_reducer.keys())
       pTasks = sorted(self.tasks_parallel.keys())
-      maxlen = max([len(task) for task in sTasks+pTasks])
+      maxlen = max([len(task) for task in sTasks+rTasks+pTasks])
       print('List of available serial tasks:')
       for task in sTasks:
-        print('\t{:{pad}}  [{mod}.py]'.format(task, pad=maxlen,
-            mod=self.tasks_serial[task].module))
+        if task == '': continue
+        __info(task, self.tasks_serial[task].module)
+      print('List of available reducer tasks:')
+      for task in rTasks:
+        if task == '': continue
+        __info(task, self.tasks_reducer[task].module)
       print('List of available parallel tasks:')
       for task in pTasks:
-        print('\t{:{pad}}  [{mod}.py]'.format(task, pad=maxlen,
-            mod=self.tasks_parallel[task].module))
+        if task == '': continue
+        __info(task, self.tasks_parallel[task].module)
 
   def preventVT100(self):
     progress.useVT100(False)
