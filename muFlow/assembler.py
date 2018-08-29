@@ -36,7 +36,8 @@ class Assembler(object):
         if (issubclass(obj, baseTasks.BaseProcessor) and
             not obj==baseTasks.BaseProcessor and not obj==baseTasks.BaseParallel):
           try:
-            obj.validateParams()
+            if not obj.isValid:
+              obj.validateParams()
           except baseTasks.BadParamException as e:
             print(e.message + ' - skipping import')
           else:

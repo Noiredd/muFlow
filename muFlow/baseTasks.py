@@ -74,6 +74,7 @@ class BaseProcessor(object):
         except ValueError:
           raise BadParamException(cls.name, param, 'bad default value')
     #nothing needs to be returned - if this completes, we're good
+    cls.isValid = True
   
   def __parseIOSpec(self, *args):
     #check if an input-output override was requested and handle it
