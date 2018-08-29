@@ -167,7 +167,8 @@ class BaseReducer(BaseProcessor):
   def validateParams(cls):
     if len(cls.inputs) != 1 or len(cls.outputs) != 1:
       raise UserException(cls.name, 'reducers can only I/O a single item')
-    cls.name = 'reduce_' + cls.name
+    if not cls.name.startswith('reduce_'):
+      cls.name = 'reduce_' + cls.name
     super(BaseReducer, cls).validateParams()
 
   def __init__(self, *args):
