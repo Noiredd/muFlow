@@ -3,6 +3,7 @@ import inspect
 import multiprocessing as mp
 import os
 import sys
+from copy import copy
 
 import baseTasks
 import progress
@@ -10,6 +11,7 @@ import progress
 class Assembler(object):
   taskFolder = 'tasks/'
   tasks_serial = {}
+  tasks_reducer = {}
   tasks_parallel = {}
   
   def __init__(self, altPath=None):
@@ -34,7 +36,9 @@ class Assembler(object):
       tmod = importlib.import_module(module)
       for name, obj in inspect.getmembers(tmod, inspect.isclass):
         if (issubclass(obj, baseTasks.BaseProcessor) and
-            not obj==baseTasks.BaseProcessor and not obj==baseTasks.BaseParallel):
+            not obj==baseTasks.BaseProcessor and
+            not obj==baseTasks.BaseParallel and
+            not obj==baseTasks.BaseReducer):
           try:
             if not obj.isValid:
               obj.validateParams()
@@ -47,6 +51,8 @@ class Assembler(object):
             #but now it matters whether it's parallel or serial
             if issubclass(obj, baseTasks.BaseParallel):
               self.tasks_parallel[obj.name] = obj
+            elif issubclass(obj, baseTasks.BaseReducer):
+              self.tasks_reducer[obj.name] = obj
             else:
               self.tasks_serial[obj.name] = obj
   
@@ -70,6 +76,8 @@ class Assembler(object):
     task_args = args[1:]
     if task_name in self.tasks_serial.keys():
       return 'serial', self.tasks_serial[task_name](*task_args)
+    elif task_name in self.tasks_reducer.keys():
+      return 'reducer', self.tasks_reducer[task_name](*task_args)
     elif task_name in self.tasks_parallel.keys():
       return 'parallel', self.tasks_parallel[task_name](*task_args)
     else:
@@ -134,6 +142,8 @@ class Assembler(object):
         continue
       if taskType == 'serial':
         flow.appendSerial(taskObject)
+      elif taskType == 'reducer':
+        flow.appendReducer(taskObject)
       else:
         flow.appendParallel(taskObject)
     flow.completeParallel() #ensure the parallel tasks are assembled
@@ -147,6 +157,7 @@ class MacroFlow(object):
     self.micros = []      #potential outputs of MicroFlows; list of tuples
     self.parallel = None  #MicroFlow object during construction
     self.num_proc = num_proc
+    self.deferred = []    #serial reducers to be added after the MicroFlow
   
   def appendSerial(self, task, isMicro=False):
     #append a serial task to the execution list
@@ -181,14 +192,28 @@ class MacroFlow(object):
         self.scope[output] = None
     self.tasks.append(task)
   
-  def appendParallel(self, task):
+  def appendParallel(self, task, isReducer=False):
     if self.parallel is None:
       #we're only starting to construct a parallelized task set
       self.parallel = MicroFlow(macro_scope=self.scope,
                                 num_proc=self.num_proc,
                                 debug=self.debug
       )
-    self.parallel.append(task)
+    self.parallel.append(task, isReducer)
+  
+  def appendReducer(self, task):
+    #Reducer is added as both a parallel and a serial task. A parallel task is
+    #added to the MicroFlow to reduce the sub-lists into sub-results, which then
+    #get reduced to the final result using a serial task that will be appended
+    #right after that MicroFlow. The serial variant has to be modified though
+    #to iterate over its input.
+    #Start with adding the parallel variant
+    self.appendParallel(task, isReducer=True)
+    #Create a serial copy
+    serial = copy(task)
+    serial.action = serial.action_final
+    #Defer its addition until after the MicroFlow is completed
+    self.deferred.append(serial)
   
   def completeParallel(self):
     #when the series of parallel tasks ends, append it to the task list
@@ -196,6 +221,9 @@ class MacroFlow(object):
       task = self.parallel
       self.parallel = None
       self.appendSerial(task, isMicro=True) #treat it *almost* as a serial task
+      #add the deferred reducers, if any
+      for serial in self.deferred:
+        self.appendSerial(serial)
   
   def execute(self):
     #measure time and print reports using external object
@@ -235,6 +263,7 @@ class MicroFlow(object):
     self.name  = 'MicroFlow'
     self.debug = debug
     self.tasks = []
+    self.reducers = []
     self.gathered = []
     self.macro_scope = macro_scope
     self.micro_scope = set()  #just for building phase
@@ -252,7 +281,7 @@ class MicroFlow(object):
       _name = ', '.join([task.name for task in self.tasks])
     self.name += ' (' + _name + ')'
   
-  def append(self, task):
+  def append(self, task, isReducer=False):
     requests = task.getInputs()
     for request in requests:
       if request not in self.micro_scope:
@@ -264,6 +293,9 @@ class MicroFlow(object):
     for output in task.getOutputs():
       self.micro_scope.add(output)
     self.tasks.append(task)
+    #if the task is also a reducer, we need to know about it
+    if isReducer:
+      self.reducers.append(task)
   
   def getInputs(self):
     return self.map_requests
@@ -351,6 +383,10 @@ class MicroFlow(object):
         collect[item].append( scope[item] )
       #report progress, if so requested (disabled by default)
       if progress is not None: progress(len(input_data[0]))
+    #collect the outputs of any reduction tasks
+    for task in self.reducers:
+      for item in task.getOutputs():
+        collect[item] = [task.output()]
     #send the outputs over the pipe
     pipe.send(collect)
 

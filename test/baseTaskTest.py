@@ -234,6 +234,48 @@ class TestParsing(unittest.TestCase):
     self.assertEqual(expected_inputs, task.getInputs())
     self.assertEqual(expected_outputs, task.getOutputs())
 
+class TestReduction(unittest.TestCase):
+  @classmethod
+  def setUpClass(self):
+    class TestReducer(bt.BaseReducer):
+      name = 'simple'
+      inputs = ['item']
+      outputs = ['item']
+      def reduction(self, a, b):
+        return a + b
+    self.TestReducer = TestReducer
+    self.TestReducer.validateParams()
+  def test_rename(self):
+    self.assertEqual(self.TestReducer.name, 'reduce_simple')
+  #input size validation
+  def test_defaultIO(self):
+    class TestReducer(bt.BaseReducer):
+      name = 'correct'
+    task = TestReducer()
+  def test_customIO(self):
+    task = self.TestReducer()
+  def test_notEnoughInputs(self):
+    class TestReducer(bt.BaseReducer):
+      name = 'fail'
+      inputs = []
+    with self.assertRaises(bt.UserException):
+      task = TestReducer()
+  def test_tooManyOutputs(self):
+    class TestReducer(bt.BaseReducer):
+      name = 'fail'
+      outputs = ['item', 'another']
+    with self.assertRaises(bt.UserException):
+      task = TestReducer()
+  #basic reduction operation (buffering, returning)
+  def test_basicReduction(self):
+    task = self.TestReducer()
+    data = [3, 5, 8, 0, 2]
+    sumd = sum(data)
+    for d in data:
+      task.action(d)
+    self.assertEqual(task.output(), sumd)
+
+
 if __name__=="__main__":
   print("Running base task tests...")
   unittest.main()

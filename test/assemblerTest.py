@@ -20,6 +20,10 @@ class TestImport(unittest.TestCase):
     self.assertIn('incr', a.tasks_parallel.keys())
     self.assertIn('vmul', a.tasks_parallel.keys())
     self.assertIn('simo', a.tasks_parallel.keys())
+  def test_importReducer(self):
+    a = self.assembler
+    self.assertEqual(len(a.tasks_reducer.keys()), 1)
+    self.assertIn('reduce_sum', a.tasks_reducer.keys())
 
 class TestAssemblerBasics(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
@@ -194,6 +198,21 @@ class TestAssemblerParallel(unittest.TestCase):
     self.assertNotIn('c', flow.scope.keys())
     self.assertEqual(flow.scope['b'], expected_b)
     self.assertEqual(flow.scope['d'], expected_d)
+
+class TestReduction(unittest.TestCase):
+  a = asm.Assembler('../test/tasks')
+  def test_reductionSP(self):
+    expected = 500500
+    text = ['lst 1001', 'reduce_sum (item->sum)']
+    flow = self.a.assembleFromText(text, 1)
+    flow.execute()
+    self.assertEqual(flow.scope['sum'], expected)
+  def test_reductionMP(self):
+    expected = 500500
+    text = ['lst 1001', 'reduce_sum (item->sum)']
+    flow = self.a.assembleFromText(text, 8)
+    flow.execute()
+    self.assertEqual(flow.scope['sum'], expected)
 
 if __name__=="__main__":
   print("Running assembler tests...")

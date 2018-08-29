@@ -154,6 +154,57 @@ class BaseParallel(BaseProcessor):
   def __init__(self, *args):
     super(BaseParallel, self).__init__(*args)
 
+class BaseReducer(BaseProcessor):
+  #This task behaves as both serial and parallel task. When added to the Flow,
+  #it is first constructed as a parallel task, allowing fast reduction of the
+  #input in subprocesses, each returning a product of reduction of its sublist
+  #packed as a list (of 1 element). Then the task is instantiated again, as a
+  #serial task, performing the same reduction of the list of reduced sublists.
+  inputs = ['item']
+  outputs = ['item']
+
+  @classmethod
+  def validateParams(cls):
+    if len(cls.inputs) != 1 or len(cls.outputs) != 1:
+      raise UserException(cls.name, 'reducers can only I/O a single item')
+    cls.name = 'reduce_' + cls.name
+    super(BaseReducer, cls).validateParams()
+
+  def __init__(self, *args):
+    super(BaseReducer, self).__init__(*args)
+    self.action = self.action_first
+
+  def output(self):
+    return self.final(self.accumulator)
+
+  def action_first(self, item):
+    #initializes the accumulator and changes action into the proper function
+    self.accumulator = item
+    self.action = self.action_every
+
+  def action_every(self, item):
+    #reduces every next item into the accumulator
+    self.accumulator = self.reduction(item, self.accumulator)
+
+  def action_final(self, item):
+    #wrapper for executing from MacroFlow
+    self.accumulator = item[0]
+    for i in item[1:]:
+      self.action_every(i)
+    return self.final(self.accumulator)
+
+  def setup(self, **kwargs):
+    #non-parallelized user code, ran once
+    #set all your counters etc. here
+    pass
+
+  def reduction(self, a, b):
+    #define how to reduce two elements here
+    return a
+
+  def final(self, item):
+    #this will be called on the reduced output right before returning it
+    return item
 
 class muException(Exception):
   def __init__(self, message):
