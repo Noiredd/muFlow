@@ -64,14 +64,14 @@ class Assembler(object):
     args = [t.replace('\0', ' ') for t in text.split()]
     #allow empty lines as legal but no-op
     if len(args) < 1:
-      return False, None
+      return None, None
     #leave parsing the specific arguments to tasks
     task_name = args[0]
     task_args = args[1:]
     if task_name in self.tasks_serial.keys():
-      return True, self.tasks_serial[task_name](*task_args)
+      return 'serial', self.tasks_serial[task_name](*task_args)
     elif task_name in self.tasks_parallel.keys():
-      return False, self.tasks_parallel[task_name](*task_args)
+      return 'parallel', self.tasks_parallel[task_name](*task_args)
     else:
       raise ConstructException(task_name, 'no such task')
   
@@ -128,14 +128,14 @@ class Assembler(object):
         pre, btwn = line.split('(')
         btwn, post = btwn.split(')')
         line = despace(pre) + ' (' + despace(btwn) + ') ' + post
-      isSerial, task = self.constructTask(line)
+      taskType, taskObject = self.constructTask(line)
       #tolerate a no-output from constructor
-      if task is None:
+      if taskObject is None:
         continue
-      if isSerial:
-        flow.appendSerial(task)
+      if taskType == 'serial':
+        flow.appendSerial(taskObject)
       else:
-        flow.appendParallel(task)
+        flow.appendParallel(taskObject)
     flow.completeParallel() #ensure the parallel tasks are assembled
     return flow
 
