@@ -5,7 +5,16 @@ if sys.version_info < (3,0):
 #####Python 2 and 3 compatibility#####
 
 class BaseProcessor(object):
-  #Basic factory for constructing flow object for given tasks
+  #Base class for all tasks. Its class method validates user-defined tasks,
+  #its constructor instantiates a task object, parses arguments etc.
+  #User tasks shall derive either directly from this class (in this case
+  #they become Serial tasks) or from one of its base descendants (for
+  #Parallel or Reducer tasks - see below). Serial tasks can in theory
+  #input and output any type of objects, but care should be taken that
+  #parallel tasks can only operate on objects aggregated in lists. For
+  #this reason, if a result of a Serial task will be further processed
+  #by some Parallel task, this result has to either be a list, or be
+  #wrapped in a list.
   name = ''
   info = ''
   params = []
@@ -151,6 +160,8 @@ class BaseProcessor(object):
     pass
 
 class BaseParallel(BaseProcessor):
+  #Parallel tasks can only input lists. With multiple inputs, all lists must
+  #be the same length.
   def __init__(self, *args):
     super(BaseParallel, self).__init__(*args)
 
@@ -160,6 +171,8 @@ class BaseReducer(BaseProcessor):
   #input in subprocesses, each returning a product of reduction of its sublist
   #packed as a list (of 1 element). Then the task is instantiated again, as a
   #serial task, performing the same reduction of the list of reduced sublists.
+  #Reducer tasks input lists of multiple elements and return a list with only
+  #a single element.
   inputs = ['item']
   outputs = ['item']
 
