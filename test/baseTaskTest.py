@@ -270,7 +270,7 @@ class TestReduction(unittest.TestCase):
   def test_basicReduction(self):
     task = self.TestReducer()
     data = [3, 5, 8, 0, 2]
-    sumd = sum(data)
+    sumd = [sum(data)]
     for d in data:
       task.action(d)
     self.assertEqual(task.output(), sumd)

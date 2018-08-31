@@ -155,8 +155,10 @@ class Assembler(object):
         flow.appendSerial(taskObject)
       elif taskType == 'reducer':
         flow.appendReducer(taskObject)
-      else:
+      elif taskType == 'parallel':
         flow.appendParallel(taskObject)
+      else:
+        raise ConstructException('line {}: '.format(n), 'constructTask failed!')
     flow.completeParallel() #ensure the parallel tasks are assembled
     return flow
 
@@ -218,12 +220,14 @@ class MacroFlow(object):
     #get reduced to the final result using a serial task that will be appended
     #right after that MicroFlow. The serial variant has to be modified though
     #to iterate over its input.
-    #Start with adding the parallel variant
-    self.appendParallel(task, isReducer=True)
-    #Create a serial copy
+    #Create a serial copy of the original
     serial = copy(task)
+    #Add the parallel variant, but be sure to change its output so that the
+    #serial variant receives it!
+    task.outputs = task.inputs
+    self.appendParallel(task, isReducer=True)
+    #Prepare the serial one but efer its addition until MicroFlow is completed
     serial.action = serial.action_final
-    #Defer its addition until after the MicroFlow is completed
     self.deferred.append(serial)
   
   def completeParallel(self):
@@ -235,6 +239,7 @@ class MacroFlow(object):
       #add the deferred reducers, if any
       for serial in self.deferred:
         self.appendSerial(serial)
+      self.deferred = []
   
   def execute(self):
     #measure time and print reports using external object
@@ -302,6 +307,8 @@ class MicroFlow(object):
     #if the task is also a reducer, we need to know about it
     if isReducer:
       self.reducers.append(task)
+      for output in task.getOutputs():
+        self.gather(output)
   
   def getInputs(self):
     return self.map_requests
@@ -387,7 +394,7 @@ class MicroFlow(object):
     #collect the outputs of any reduction tasks
     for task in self.reducers:
       for item in task.getOutputs():
-        collect[item] = [task.output()]
+        collect[item] = task.output()
     #send the outputs over the pipe
     pipe.send(collect)
 

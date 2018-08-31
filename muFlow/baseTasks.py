@@ -176,7 +176,7 @@ class BaseReducer(BaseProcessor):
     self.action = self.action_first
 
   def output(self):
-    return self.final(self.accumulator)
+    return [self.final(self.accumulator)]
 
   def action_first(self, item):
     #initializes the accumulator and changes action into the proper function
