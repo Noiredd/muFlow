@@ -202,13 +202,13 @@ class TestAssemblerParallel(unittest.TestCase):
 class TestReduction(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
   def test_reductionSP(self):
-    expected = 500500
+    expected = [500500]
     text = ['lst 1001', 'reduce_sum (item->sum)']
     flow = self.a.assembleFromText(text, 1)
     flow.execute()
     self.assertEqual(flow.scope['sum'], expected)
   def test_reductionMP(self):
-    expected = 500500
+    expected = [500500]
     text = ['lst 1001', 'reduce_sum (item->sum)']
     flow = self.a.assembleFromText(text, 8)
     flow.execute()

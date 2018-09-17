@@ -205,7 +205,7 @@ class BaseReducer(BaseProcessor):
     self.accumulator = item[0]
     for i in item[1:]:
       self.action_every(i)
-    return self.final(self.accumulator)
+    return self.output()
 
   def setup(self, **kwargs):
     #non-parallelized user code, ran once
