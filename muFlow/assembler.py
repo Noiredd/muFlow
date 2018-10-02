@@ -7,6 +7,7 @@ from copy import copy
 
 import baseTasks
 import progress
+from errors import *
 
 class Assembler(object):
   taskFolder = 'tasks/'
@@ -397,9 +398,3 @@ class MicroFlow(object):
         collect[item] = task.output()
     #send the outputs over the pipe
     pipe.send(collect)
-
-
-class ConstructException(baseTasks.muException):
-  def __init__(self, taskname, text):
-    self.message = text + ' (' + taskname + ')'
-    super(ConstructException, self).__init__(self.message)

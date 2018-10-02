@@ -3,6 +3,7 @@ import sys
 sys.path.append('../muFlow')
 import assembler as asm
 import baseTasks as bt
+from errors import *
 
 class TestImport(unittest.TestCase):
   assembler = asm.Assembler('../test/tasks')
@@ -31,7 +32,7 @@ class TestAssemblerBasics(unittest.TestCase):
     _, task = self.a.constructTask('src 5')
     self.assertIsInstance(task, bt.BaseProcessor)
   def test_instantiateFail(self):
-    with self.assertRaises(asm.ConstructException):
+    with self.assertRaises(ConstructException):
       _, task = self.a.constructTask('noTask')
   def test_setupTask(self):
     flow = self.a.assembleFromText(['src 2', 'add -1'])
@@ -92,15 +93,15 @@ class TestAssemblerAdvanced(unittest.TestCase):
     self.assertEqual(rslt['val2'], 0)
   def test_customFlowFailInputs(self):
     text = ['src 0', 'dup (item, item->item, val)']
-    with self.assertRaises(bt.ParseIOSpecException):
+    with self.assertRaises(ParseIOSpecException):
       flow = self.a.assembleFromText(text)
   def test_customFlowFailScope(self):
     text = ['src (->val) -4', 'add (val1->val1) 3']
-    with self.assertRaises(asm.ConstructException):
+    with self.assertRaises(ConstructException):
       flow = self.a.assembleFromText(text)
   def test_customFlowFailBrackets(self):
     text = ['src (->val 3', 'add (val->val) 3']
-    with self.assertRaises(asm.ConstructException):
+    with self.assertRaises(ConstructException):
       flow = self.a.assembleFromText(text)
 
 class TestMicroFlow(unittest.TestCase):
