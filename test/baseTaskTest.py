@@ -275,7 +275,6 @@ class TestReduction(unittest.TestCase):
       task.action(d)
     self.assertEqual(task.output(), sumd)
 
-
 if __name__=="__main__":
   print("Running base task tests...")
   unittest.main()
