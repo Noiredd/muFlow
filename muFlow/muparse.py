@@ -3,28 +3,37 @@ import enum
 from errors import *
 
 class BaseToken(object):
-  def __init__(self, text):
+  def __init__(self, text, pos):
     self.text = text
+    self.pos  = pos
+class EOToken(BaseToken):
+  def __init__(self, pos):
+    self.debug = 'end of string'
+    super(EOToken, self).__init__('', pos)
 class Literal(BaseToken):
-  def __init__(self, text):
-    self.text = text
+  def __init__(self, text, pos):
+    self.debug = 'literal "{}"'.format(text)
+    super(Literal, self).__init__(text, pos)
 class Brack_L(BaseToken):
-  def __init__(self, text):
-    self.text = text
+  def __init__(self, text, pos):
+    self.debug = 'token "bracket open"'
+    super(Brack_L, self).__init__(text, pos)
 class Brack_R(BaseToken):
-  def __init__(self, text):
-    self.text = text
+  def __init__(self, text, pos):
+    self.debug = 'token "bracket close"'
+    super(Brack_R, self).__init__(text, pos)
 class Dest_Op(BaseToken):
-  def __init__(self, text):
-    self.text = text
+  def __init__(self, text, pos):
+    self.debug = 'token "destination operator"'
+    super(Dest_Op, self).__init__(text, pos)
 
 class PState(enum.Enum):
-  NAME = 0
-  IO_OR_PARAM = 1
-  INPUT = 2
-  OUTPUT = 3
-  PARAM = 4
-  END = 5
+  NAME = "program name"
+  IO_OR_PARAM = "input spec or parameter"
+  INPUT = "input arguments"
+  OUTPUT = "output arguments"
+  PARAM = "parameters"
+  END = "end of seequence"
 class LState(enum.Enum):
   CHAR = 0
   CTRL = 1
@@ -92,17 +101,18 @@ class Lexer(object):
     # construct a token of the right type depending on the text
     if self.literal in self.control_map.keys():
       tok_class = self.control_map[self.literal]
-      self.tokens.append(tok_class(self.literal))
+      self.tokens.append(tok_class(self.literal, self.l_start))
     elif not self.literal in self.comment_chars:
       # ignore the comment symbols - the parsing ends here
-      self.tokens.append(Literal(self.literal))
+      self.tokens.append(Literal(self.literal, self.l_start))
     self.literal = ''
 
   def tokenize(self, text):
     self.tokens = []
     self.literal = ''
+    self.l_start = 0
     state = LState.CHAR
-    for ch in text:
+    for i, ch in enumerate(text):
       # obtain the rule for a given state and encountered character
       state_rule = self.matrix[state]
       char_type = self.__recognizeChar(ch)
@@ -115,18 +125,25 @@ class Lexer(object):
         break
       # push the character to the token being built
       if push_char:
+        # if this is the first character in a token - store its position
+        if self.literal == '':
+          self.l_start = i
         self.__pushChar(ch)
     self.__pushToken()
+    # special end-of-tokens
+    self.tokens.append(EOToken(len(text)))
     return self.tokens
 
 class Parser(object):
   matrix = {
     PState.NAME: {
-      Literal: ('name',   PState.IO_OR_PARAM)
+      Literal: ('name',   PState.IO_OR_PARAM),
+      EOToken: (None,     PState.END)
     },
     PState.IO_OR_PARAM: {
       Brack_L: (None,     PState.INPUT),
-      Literal: ('params', PState.PARAM)
+      Literal: ('params', PState.PARAM),
+      EOToken: (None,     PState.END)
     },
     PState.INPUT: {
       Literal: ('args',   PState.INPUT),
@@ -138,7 +155,8 @@ class Parser(object):
       Brack_R: (None,     PState.PARAM)
     },
     PState.PARAM: {
-      Literal: ('params', PState.PARAM)
+      Literal: ('params', PState.PARAM),
+      EOToken: (None,     PState.END)
     }
   }
 
@@ -147,9 +165,9 @@ class Parser(object):
 
   def parseText(self, text):
     tokens = self.lexer.tokenize(text)
-    return self.parseTokens(tokens)
+    return self.parseTokens(tokens, line=text)
 
-  def parseTokens(self, tokens):
+  def parseTokens(self, tokens, line=''):
     state = PState.NAME
     parsed = {
       'name': '',
@@ -161,11 +179,13 @@ class Parser(object):
       state_rule = self.matrix[state]
       token_type = type(token)
       if token_type not in state_rule.keys():
-        raise ParsingException('Unexpected token type') # TODO: nice printouts with pointing to offender
+        raise ParsingException(token, state, line=line)
       token_key, state = state_rule[token_type]
       if token_key is not None:
         if token_key == 'name':
           parsed['name'] = token.text
         else:
           parsed[token_key].append(token.text)
+      if state == PState.END:
+        break
     return parsed

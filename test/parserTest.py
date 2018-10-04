@@ -74,6 +74,36 @@ class TestParser(unittest.TestCase):
     expect = self.makeDict(name='task', args=['arg1', 'arg2'], dest=['dest'], params=['param1', 'param2'])
     self.parseTest(text, expect)
 
+class TestParserFailures(unittest.TestCase):
+  @classmethod
+  def setUpClass(self):
+    self.parser = muparse.Parser()
+  def failureTest(self, text, ref_msg):
+    with self.assertRaises(muparse.ParsingException) as cm:
+      self.parser.parseText(text)
+    err_msg = cm.exception.error.split('\n')[1]
+    self.assertEqual(err_msg, ref_msg)
+  def test_bracketOpen(self):
+    text = 'task (input'
+    info = '           ^'
+    self.failureTest(text, info)
+  def test_bracketClose(self):
+    text = 'someTask (input > output1) output2 )'
+    info = '                                   ^'
+    self.failureTest(text, info)
+  def test_twoBrackets(self):
+    text = 'tsk (in1, in2 > out1) (in3 > out2)'
+    info = '                      ^'
+    self.failureTest(text, info)
+  def test_destOperatorBare(self):
+    text = 'task input > output'
+    info = '           ^'
+    self.failureTest(text, info)
+  def test_destOperatorOut(self):
+    text = 'task (in > out) param > param'
+    info = '                      ^'
+    self.failureTest(text, info)
+
 if __name__=="__main__":
   print("Running parser tests...")
   unittest.main()

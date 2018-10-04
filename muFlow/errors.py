@@ -43,6 +43,15 @@ class ConstructException(muException):
     super(ConstructException, self).__init__(self.message)
 
 class ParsingException(muException):
-  def __init__(self, message):
-    self.message = message
+  def __init__(self, token, state, line=''):
+    self.message = 'Unexpected {} when scanning for {}.'.format(token.debug, state.value)
+    if line == '':
+      self.error = 'Source line not available.'
+    else:
+      f = '{:>' + str(token.pos + 1) + '}'
+      self.error = line + '\n' + f.format('^')
     super(ParsingException, self).__init__(self.message)
+  def die(self):
+    print("ParsingException: " + self.message)
+    print(self.error)
+    exit()
