@@ -26,14 +26,8 @@ class TestImport(unittest.TestCase):
     self.assertEqual(len(a.tasks_reducer.keys()), 1)
     self.assertIn('reduce_sum', a.tasks_reducer.keys())
 
-class TestAssemblerBasics(unittest.TestCase):
+class TestAssembler(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
-  def test_instantiate(self):
-    _, task = self.a.constructTask('src 5')
-    self.assertIsInstance(task, bt.BaseProcessor)
-  def test_instantiateFail(self):
-    with self.assertRaises(ConstructException):
-      _, task = self.a.constructTask('noTask')
   def test_setupTask(self):
     flow = self.a.assembleFromText(['src 2', 'add -1'])
     flow.execute()
@@ -43,26 +37,9 @@ class TestAssemblerBasics(unittest.TestCase):
     self.assertIsInstance(flow, asm.MacroFlow)
     self.assertEqual(len(flow.tasks), 1)
     self.assertEqual(flow.execute()['item'], 2)
-  def test_commentHashBegin(self):
-    text = ['src 3', 'add 2', '#add 2']
-    flow = self.a.assembleFromText(text)
-    self.assertEqual(len(flow.tasks), 2)
-    self.assertEqual(flow.execute()['item'], 5)
-  def test_commentHashMiddle(self):
-    text = ['src 3', 'add 2', 'add 2 #3']
-    flow = self.a.assembleFromText(text)
-    self.assertEqual(len(flow.tasks), 3)
-    self.assertEqual(flow.execute()['item'], 7)
-  def test_commentSlashBegin(self):
-    text = ['src 3', '//add 2', 'add 2']
-    flow = self.a.assembleFromText(text)
-    self.assertEqual(len(flow.tasks), 2)
-    self.assertEqual(flow.execute()['item'], 5)
-  def test_commentSlashMiddle(self):
-    text = ['src 3', 'add 2 // 4', 'add 2']
-    flow = self.a.assembleFromText(text)
-    self.assertEqual(len(flow.tasks), 3)
-    self.assertEqual(flow.execute()['item'], 7)
+  def test_assembleFail(self):
+    with self.assertRaises(ConstructException):
+      flow = self.a.assembleFromText(['noTask'])
   def test_tolerateEmptyLines(self):
     text = ['src 3', '', 'add 2']
     flow = self.a.assembleFromText(text)
@@ -76,31 +53,18 @@ class TestAssemblerBasics(unittest.TestCase):
     rslt = flow.execute()
     self.assertEqual(rslt['item'], 5)
     self.assertEqual(rslt['thing'], 2)
-  
-class TestAssemblerAdvanced(unittest.TestCase):
-  a = asm.Assembler('../test/tasks')
   def test_customFlow(self):
-    text = ['src (->val) 0', 'dup (val->val1,val2)', 'add (val1->val1) 3', 'add (val2->val2) 1']
+    text = ['src (>val) 0', 'dup (val>val1,val2)', 'add (val1 > val1) 3', 'add (val2>val2)1']
     flow = self.a.assembleFromText(text)
     rslt = flow.execute()
     self.assertEqual(rslt['val1'], 3)
     self.assertEqual(rslt['val2'], 1)
-  def test_customFlowSpaces(self):
-    text = ['src(->val) -1', 'dup (val -> val1, val2)', 'add (val1 -> val1) 3', 'add(val2->val2)1']
-    flow = self.a.assembleFromText(text)
-    rslt = flow.execute()
-    self.assertEqual(rslt['val1'], 2)
-    self.assertEqual(rslt['val2'], 0)
   def test_customFlowFailInputs(self):
-    text = ['src 0', 'dup (item, item->item, val)']
-    with self.assertRaises(ParseIOSpecException):
-      flow = self.a.assembleFromText(text)
-  def test_customFlowFailScope(self):
-    text = ['src (->val) -4', 'add (val1->val1) 3']
+    text = ['src 0', 'dup (item, item>item, val)']
     with self.assertRaises(ConstructException):
       flow = self.a.assembleFromText(text)
-  def test_customFlowFailBrackets(self):
-    text = ['src (->val 3', 'add (val->val) 3']
+  def test_customFlowFailScope(self):
+    text = ['src (>val) -4', 'add (val1>val1) 3']
     with self.assertRaises(ConstructException):
       flow = self.a.assembleFromText(text)
 
@@ -173,7 +137,7 @@ class TestAssemblerParallel(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
   def test_parallelFlow(self):
     expected = [1, 2, 3, 4, 5]
-    text = ['lst 5', 'incr (item->plus1) 1', 'dup(plus1->a,b)']
+    text = ['lst 5', 'incr (item>plus1) 1', 'dup(plus1>a,b)']
     flow = self.a.assembleFromText(text)
     flow.execute()
     self.assertIn('plus1', flow.scope.keys())
@@ -181,7 +145,7 @@ class TestAssemblerParallel(unittest.TestCase):
   def test_multipleOutputsFlow(self):
     expected_c = [0.5, 1.0, 1.5, 2.0]
     expected_d = [2, 4, 6, 8]
-    text = ['lst (->a) 4', 'incr (a->b) 1', 'simo (b->c,d) 2', 'get(c)', 'get(d)']
+    text = ['lst (>a) 4', 'incr (a>b) 1', 'simo (b>c,d) 2', 'get(c)', 'get(d)']
     flow = self.a.assembleFromText(text)
     flow.execute()
     self.assertIn('c', flow.scope.keys())
@@ -191,7 +155,7 @@ class TestAssemblerParallel(unittest.TestCase):
   def test_multipleFlows(self):
     expected_b = [1, 2, 3, 4]
     expected_d = [2, 6, 12, 20]
-    text = ['lst (->a) 4', 'incr (a->b) 1', 'get (b)', 'incr (a->c) 2', 'vmul (b,c->d)','get (d)']
+    text = ['lst (>a) 4', 'incr (a>b) 1', 'get (b)', 'incr (a>c) 2', 'vmul (b,c>d)','get (d)']
     flow = self.a.assembleFromText(text)
     flow.execute()
     self.assertIn('b', flow.scope.keys())
@@ -204,13 +168,13 @@ class TestReduction(unittest.TestCase):
   a = asm.Assembler('../test/tasks')
   def test_reductionSP(self):
     expected = [500500]
-    text = ['lst 1001', 'reduce_sum (item->sum)']
+    text = ['lst 1001', 'reduce_sum (item>sum)']
     flow = self.a.assembleFromText(text, 1)
     flow.execute()
     self.assertEqual(flow.scope['sum'], expected)
   def test_reductionMP(self):
     expected = [500500]
-    text = ['lst 1001', 'reduce_sum (item->sum)']
+    text = ['lst 1001', 'reduce_sum (item>sum)']
     flow = self.a.assembleFromText(text, 8)
     flow.execute()
     self.assertEqual(flow.scope['sum'], expected)

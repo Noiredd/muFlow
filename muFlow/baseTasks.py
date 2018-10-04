@@ -17,17 +17,47 @@ class BaseProcessor(object):
   inputs = []
   outputs = []
   isValid = False
-  
-  def __init__(self, *args):
+
+  def __init__(self, args=[], dest=[], params=[], **kwargs):
+    #print(self.name, args, dest, params)
     #if the task has not been yet validated - now is the time
     if not self.isValid:
       self.validateParams()
-    #parse the IO specification, if present, and remove it from the args list
-    thereWasIOSpec = self.__parseIOSpec(*args)
-    if thereWasIOSpec:
-      args = args[1:]
-    self.__parseArgs(*args)
-  
+    #check the input/output override
+    if len(args) > 0:
+      if len(args) != len(self.inputs):
+        raise ConstructException(self.name, 'input length mismatch: ' +
+              'expected {}, received {}'.format(len(self.inputs), len(args)))
+      #for tasks that work "in-place", change the output as well
+      if self.inputs == self.outputs:
+        self.outputs = args
+      self.inputs = args
+    if len(dest):
+      if len(dest) != len(self.outputs):
+        raise ConstructException(self.name, 'output length mismatch: ' +
+              'expected {}, received {}'.format(len(self.outputs), len(dest)))
+      self.outputs = dest
+    #check the parameters
+    if len(params) < self.requiredArgs:
+      raise ConstructException(self.name, 'not enough arguments')
+    if len(params) > self.maximumArgs:
+      raise ConstructException(self.name, 'too many arguments')
+    #assign parameter values, optionally filling in with defaults
+    for i, param in enumerate(self.params):
+      param_name = param[0]
+      param_type = param[1]
+      if i < len(params):
+        param_value = params[i]
+      else:
+        param_value = param[2]
+      try:
+        typed_value = param_type(param_value)
+      except ValueError:
+        raise ConstructException(self.name,
+              'bad type for param "{}" - expected a {}, received "{}"'.format(
+                param_name, str(param_type).split("'")[1], str(param_value)))
+      setattr(self, param_name, typed_value)
+
   @classmethod
   def validateParams(cls):
     #make sure params have a proper layout:
@@ -80,45 +110,7 @@ class BaseProcessor(object):
           raise BadParamException(cls.name, param, 'bad default value')
     #nothing needs to be returned - if this completes, we're good
     cls.isValid = True
-  
-  def __parseIOSpec(self, *args):
-    #check if an input-output override was requested and handle it
-    #expects input of following form:
-    #   ([input1[,input2[...]]][->output1[,output2[...]]])
-    #this means that "(item)" as well as "(->name,image)" are allowed
-    #also, text between brackets must have spaces removed
-    if len(args)==0 or not args[0].startswith('('):
-      #no IO redirection spec - we're done
-      return False  #not received anything
-    if not args[0].endswith(')'):
-      raise ParseIOSpecException(self.name, 'unbalanced brackets')
-    io_spec = args[0][1:-1]
-    if '->' in io_spec:
-      io_in_, io_out_ = io_spec.split('->')
-    else:
-      io_in_  = io_spec
-      io_out_ = ''
-    #input override
-    if io_in_ != '':
-      io_in = io_in_.split(',')
-      if len(io_in) != len(self.inputs):
-        raise ParseIOSpecException(self.name, 'input spec length mismatch: ' +
-              'expected {}, received {}'.format(len(self.inputs), len(io_in)))
-      else:
-        #for tasks that work "in-place", change the output as well
-        if self.inputs == self.outputs:
-          self.outputs = io_in
-        self.inputs = io_in
-    #output override
-    if io_out_ != '':
-      io_out = io_out_.split(',')
-      if len(io_out) != len(self.outputs):
-        raise ParseIOSpecException(self.name, 'output spec length mismatch: ' +
-              'expected {}, received {}'.format(len(self.outputs), len(io_out)))
-      else:
-        self.outputs = io_out
-    return True #parsed inputs
-  
+
   def __parseArgs(self, *args):
     #ensure the right number of arguments, optionally fill with defaults
     defs = ()
@@ -140,17 +132,17 @@ class BaseProcessor(object):
       except ValueError:
         raise ParseArgsException(self.name, param)
       setattr(self, arg_name, c_arg)
-  
+
   def getInputs(self):
     return self.inputs
-  
+
   def getOutputs(self):
     return self.outputs
   
   def setup(self, **kwargs):
     #non-parallelized user code
     pass
-  
+
   def action(self, *args):
     #parallelized (per-item) user code
     pass
@@ -158,8 +150,8 @@ class BaseProcessor(object):
 class BaseParallel(BaseProcessor):
   #Parallel tasks can only input lists. With multiple inputs, all lists must
   #be the same length.
-  def __init__(self, *args):
-    super(BaseParallel, self).__init__(*args)
+  def __init__(self, args=[], dest=[], params=[], **kwargs):
+    super(BaseParallel, self).__init__(args, dest, params, **kwargs)
 
 class BaseReducer(BaseProcessor):
   #This task behaves as both serial and parallel task. When added to the Flow,
@@ -180,8 +172,8 @@ class BaseReducer(BaseProcessor):
       cls.name = 'reduce_' + cls.name
     super(BaseReducer, cls).validateParams()
 
-  def __init__(self, *args):
-    super(BaseReducer, self).__init__(*args)
+  def __init__(self, args=[], dest=[], params=[], **kwargs):
+    super(BaseReducer, self).__init__(args, dest, params, **kwargs)
     self.action = self.action_first
 
   def output(self):

@@ -20,23 +20,6 @@ class BadParamException(muException):
     self.message = param[0] + ' ' + text + ' (' + taskname + ')'
     super(BadParamException, self).__init__(self.message)
 
-class ArgsListException(muException):
-  def __init__(self, taskname, text):
-    self.message = text + ' (' + taskname + ')'
-    super(ArgsListException, self).__init__(self.message)
-
-class ParseArgsException(muException):
-  def __init__(self, taskname, param):
-    def s(t):
-      return str(t).split("'")[1]
-    self.message = 'bad type for param "' + param[0] + '" - expected a ' + s(param[1]) + ' (' + taskname + ')'
-    super(ParseArgsException, self).__init__(self.message)
-
-class ParseIOSpecException(muException):
-  def __init__(self, taskname, message):
-    self.message = message + ' (' + taskname + ')'
-    super(ParseIOSpecException, self).__init__(self.message)
-
 class ConstructException(muException):
   def __init__(self, taskname, text):
     self.message = text + ' (' + taskname + ')'

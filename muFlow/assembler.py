@@ -6,6 +6,7 @@ import sys
 from copy import copy
 
 import baseTasks
+import muparse
 import progress
 from errors import *
 
@@ -22,8 +23,9 @@ class Assembler(object):
       self.taskFolder = os.path.join(rootDir, 'tasks')
     else:
       self.taskFolder = altPath
+    self.parser = muparse.Parser()
     self.__importTasks(self.taskFolder)
-  
+
   def __importTasks(self, path):
     if not path.endswith('/'): path += '/'
     #scan the folder for modules
@@ -56,34 +58,7 @@ class Assembler(object):
               self.tasks_reducer[obj.name] = obj
             else:
               self.tasks_serial[obj.name] = obj
-  
-  def constructTask(self, text):
-    #parses a given text (line) and attempts to construct a task from it
-    #allow commenting out parts of a line
-    hashpos = text.find('#')
-    if hashpos >= 0:
-      text = text[:hashpos]
-    slshpos = text.find('//')
-    if slshpos >= 0:
-      text = text[:slshpos]
-    #allow escaping spaces with '\ '
-    text = text.replace('\\ ', '\0')
-    args = [t.replace('\0', ' ') for t in text.split()]
-    #allow empty lines as legal but no-op
-    if len(args) < 1:
-      return None, None
-    #leave parsing the specific arguments to tasks
-    task_name = args[0]
-    task_args = args[1:]
-    if task_name in self.tasks_serial.keys():
-      return 'serial', self.tasks_serial[task_name](*task_args)
-    elif task_name in self.tasks_reducer.keys():
-      return 'reducer', self.tasks_reducer[task_name](*task_args)
-    elif task_name in self.tasks_parallel.keys():
-      return 'parallel', self.tasks_parallel[task_name](*task_args)
-    else:
-      raise ConstructException(task_name, 'no such task')
-  
+
   def printTaskDetails(self, task):
     s = lambda x: str(x).split("'")[1]
     print('\t{}'.format(task.info))
@@ -133,33 +108,36 @@ class Assembler(object):
 
   def preventVT100(self):
     progress.useVT100(False)
-  
+
   def preventLogging(self):
     progress.usePrint(False)
 
   def assembleFromText(self, lines, num_proc=0, debug=False):
+    #parses the given text line by line, constructing tasks from them
     flow = MacroFlow(num_proc=num_proc, debug=debug)
     for n, line in enumerate(lines):
-      #more robustness allows some flexibility in IO override text
-      if '(' in line:
-        if line.count('(') > 1 or line.count(')') != 1:
-          raise ConstructException('line {}: '.format(n), 'unbalanced brackets')
-        despace = lambda x: ''.join(x.split())
-        pre, btwn = line.split('(')
-        btwn, post = btwn.split(')')
-        line = despace(pre) + ' (' + despace(btwn) + ') ' + post
-      taskType, taskObject = self.constructTask(line)
-      #tolerate a no-output from constructor
-      if taskObject is None:
+      #parse the line into a dict of construction information
+      #(task name, input/output arguments, parameters)
+      taskData = self.parser.parseText(line)
+      taskName = taskData['name']
+      #allow empty (or commented) lines
+      if taskName == '':
         continue
-      if taskType == 'serial':
-        flow.appendSerial(taskObject)
-      elif taskType == 'reducer':
-        flow.appendReducer(taskObject)
-      elif taskType == 'parallel':
+      #try to find the task in the task lists, starting from parallel
+      if taskName in self.tasks_parallel.keys():
+        taskClass = self.tasks_parallel[taskName]
+        taskObject = taskClass(**taskData)
         flow.appendParallel(taskObject)
+      elif taskName in self.tasks_serial.keys():
+        taskClass = self.tasks_serial[taskName]
+        taskObject = taskClass(**taskData)
+        flow.appendSerial(taskObject)
+      elif taskName in self.tasks_reducer.keys():
+        taskClass = self.tasks_reducer[taskName]
+        taskObject = taskClass(**taskData)
+        flow.appendReducer(taskObject)
       else:
-        raise ConstructException('line {}: '.format(n), 'constructTask failed!')
+        raise ConstructException('line {}: '.format(n), 'no such task!')
     flow.completeParallel() #ensure the parallel tasks are assembled
     return flow
 

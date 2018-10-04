@@ -29,7 +29,7 @@ class TestTaskParams(unittest.TestCase):
     class GoodParamTask(bt.BaseProcessor):
       params = [('param',str)]
     GoodParamTask.validateParams()
-    task = GoodParamTask('value')
+    task = GoodParamTask(params=['value'])
     self.assertIsInstance(task, GoodParamTask)
     a = task.param  #test that the param can be reached
 
@@ -125,7 +125,7 @@ class TestTaskInputOutput(unittest.TestCase):
     it_o = task.action(*it_i)
     self.assertEqual(it_o, it_e)
 
-class TestParsing(unittest.TestCase):
+class TestParams(unittest.TestCase):
   @classmethod
   def setUpClass(self):
     class SimpleTask(bt.BaseProcessor):
@@ -162,73 +162,70 @@ class TestParsing(unittest.TestCase):
       outputs = ['image']
     self.IOTaskInPlace = IOTaskInPlace
     self.IOTaskInPlace.validateParams()
-  #argument counting
-  def test_notEnoughArgs(self):
-    with self.assertRaises(bt.ArgsListException):
+  #parameter counting
+  def test_notEnoughParams(self):
+    with self.assertRaises(bt.ConstructException):
       task = self.SimpleTask()
-  def test_tooManyArgs(self):
-    with self.assertRaises(bt.ArgsListException):
-      task = self.SimpleTask('value1', 'value2')
+  def test_tooManyParams(self):
+    with self.assertRaises(bt.ConstructException):
+      task = self.SimpleTask(params=['value1', 'value2'])
   def test_memberCreate(self):
-    task = self.SimpleTask('value')
+    task = self.SimpleTask(params=['value'])
     self.assertTrue(hasattr(task, 'arg'))
-  #argument parsing
+  #parameter parsing
   def test_parseStr(self):
-    task = self.ParamsTask('5', '2.0', 'value')
+    task = self.ParamsTask(params=['5', '2.0', 'value'])
     self.assertEqual(type(task.text), str)
     self.assertEqual(task.text, 'value')
   def test_parseInt(self):
-    task = self.ParamsTask('5', '2.0', 'value')
+    task = self.ParamsTask(params=['5', '2.0', 'value'])
     self.assertEqual(type(task.count), int)
     self.assertEqual(task.count, 5)
   def test_parseFloat(self):
-    task = self.ParamsTask('5', '2.2', 'value')
+    task = self.ParamsTask(params=['5', '2.2', 'value'])
     self.assertEqual(type(task.number), float)
     self.assertEqual(task.number, 2.2)
   def test_parseIntFail(self):
-    with self.assertRaises(bt.ParseArgsException):
-      task = self.ParamsTask('5x', '2.2', 'value')
+    with self.assertRaises(bt.ConstructException):
+      task = self.ParamsTask(params=['5x', '2.2', 'value'])
   def test_parseFloatFail(self):
-    with self.assertRaises(bt.ParseArgsException):
-      task = self.ParamsTask('5', 'er2.2', 'value')
+    with self.assertRaises(bt.ConstructException):
+      task = self.ParamsTask(params=['5', 'er2.2', 'value'])
   def test_parseDefaultParam(self):
     task = self.DefaultParamTask()
     self.assertEqual(type(task.count), int)
     self.assertEqual(task.count, 1)
-    task = self.DefaultParamTask('2')
+    task = self.DefaultParamTask(params=['2'])
     self.assertEqual(task.count, 2)
   def test_parseDefaultParams(self):
-    task = self.DefaultParamsTask('1', '2', '3')
+    task = self.DefaultParamsTask(params=['1', '2', '3'])
     self.assertEqual(task.a, 1)
     self.assertEqual(task.b, 2)
     self.assertEqual(task.c, 3)
-    task = self.DefaultParamsTask('1', '2')
+    task = self.DefaultParamsTask(params=['1', '2'])
     self.assertEqual(task.a, 1)
     self.assertEqual(task.b, 2)
     self.assertEqual(task.c, 1)
   #input/output override
-  def test_parseBracketsFail(self):
-    with self.assertRaises(bt.ParseIOSpecException):
-      task = self.IOTaskInput('(thing,itsname')
   def test_parseInputNumFail(self):
-    with self.assertRaises(bt.ParseIOSpecException):
-      task = self.IOTaskInput('(thing)')
+    with self.assertRaises(bt.ConstructException):
+      task = self.IOTaskInput(args=['thing'])
   def test_parseInputOverride(self):
-    task = self.IOTaskInput('(thing,filename)')
+    task = self.IOTaskInput(args=['thing', 'filename'])
     expected_inputs = ['thing', 'filename']
     self.assertEqual(expected_inputs, task.getInputs())
   def test_parseOutputOverride(self):
-    task = self.IOTaskOutput('(->rgb,ignore,a)')
+    task = self.IOTaskOutput(dest=['rgb', 'ignore', 'a'])
     expected_outputs = ['rgb', 'ignore', 'a']
     self.assertEqual(expected_outputs, task.getOutputs())
   def test_parseInputOutput(self):
-    task = self.IOTaskInOut('(a,b->c)')
+    task = self.IOTaskInOut(args=['a', 'b'], dest=['c'])
     expected_inputs = ['a', 'b']
     expected_outputs = ['c']
     self.assertEqual(expected_inputs, task.getInputs())
     self.assertEqual(expected_outputs, task.getOutputs())
   def test_parseInPlace(self):
-    task = self.IOTaskInPlace('(items)')
+    task = self.IOTaskInPlace(args=['items'])
     expected_inputs = ['items']
     expected_outputs = ['items']
     self.assertEqual(expected_inputs, task.getInputs())
@@ -252,8 +249,6 @@ class TestReduction(unittest.TestCase):
     class TestReducer(bt.BaseReducer):
       name = 'correct'
     task = TestReducer()
-  def test_customIO(self):
-    task = self.TestReducer()
   def test_notEnoughInputs(self):
     class TestReducer(bt.BaseReducer):
       name = 'fail'
