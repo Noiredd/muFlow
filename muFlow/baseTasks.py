@@ -111,28 +111,6 @@ class BaseProcessor(object):
     #nothing needs to be returned - if this completes, we're good
     cls.isValid = True
 
-  def __parseArgs(self, *args):
-    #ensure the right number of arguments, optionally fill with defaults
-    defs = ()
-    if len(args) < self.requiredArgs:
-      raise ArgsListException(self.name, 'not enough arguments')
-    else:
-      if len(args) > self.maximumArgs:
-        raise ArgsListException(self.name, 'too many arguments')
-      elif len(args) < self.maximumArgs:
-        defaults = [p[2] for p in self.params if len(p)>2]
-        overlap = len(defaults) - self.maximumArgs + len(args)
-        defs = tuple(defaults[overlap:])
-    #parse and assign to the object
-    for arg, param in zip(args+defs, self.params):
-      arg_name = param[0]
-      arg_type = param[1]
-      try:
-        c_arg = arg_type(arg)
-      except ValueError:
-        raise ParseArgsException(self.name, param)
-      setattr(self, arg_name, c_arg)
-
   def getInputs(self):
     return self.inputs
 
