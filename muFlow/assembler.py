@@ -65,10 +65,18 @@ class Assembler(object):
     print('\tParams:  {}'.format(len(task.params)))
     if len(task.params) > 0:
       for param in task.params:
-        default = lambda x: '' if len(x) < 3 else ', default = {}'.format(x[2])
-        print('\t\t{:10}({}){}'.format(param[0], s(param[1]), default(param)))
-    print('\tInputs:  {}, default: {}'.format(len(task.inputs), ','.join(task.inputs)))
-    print('\tOutputs: {}, default: {}'.format(len(task.outputs), ','.join(task.outputs)))
+        if type(param[1]) is not baseTasks.MuEnum:
+          print('\t\t{:10}{}{}'.format(
+            param[0],
+            s(param[1]),
+            '' if len(param) < 3 else ', default = {}'.format(param[2])
+          ))
+        else:
+          print('\t\t{:10}ENUM: "{}"'.format(param[0], '", "'.join(param[1].keys())))
+          if len(param) == 3:
+            print('\t\t{:10}{}'.format('', 'default = "{}"'.format(param[2])))
+    print('\tInputs:  {}, default: {}'.format(len(task.inputs), ', '.join(task.inputs)))
+    print('\tOutputs: {}, default: {}'.format(len(task.outputs), ', '.join(task.outputs)))
 
   def printInfo(self, task_=None):
     if task_ is not None:
