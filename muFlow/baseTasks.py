@@ -1,5 +1,26 @@
 from errors import *
 
+class MuEnum(dict):
+  def __init__(self, taskname, paramname, d={}, **kw):
+    self.taskname = taskname
+    self.paramname = paramname
+    if type(d) is not dict:
+      d = kw
+    else:
+      for k,v in kw.items():
+        d[k] = v
+    super(MuEnum, self).__init__(**d)
+  def __call__(self, text):
+    if text in self.keys():
+      return self[text]
+    else:
+      allowed = '"' + '", "'.join(self.keys()) + '"'
+      message = 'Unexpected value for param "{}" (allowed: {}; was: "{}").'.format(
+        self.paramname, allowed, text
+      )
+      raise UserException(self.taskname, message)
+
+
 class BaseProcessor(object):
   #Base class for all tasks. Its class method validates user-defined tasks,
   #its constructor instantiates a task object, parses arguments etc.
@@ -90,6 +111,18 @@ class BaseProcessor(object):
     for param in cls.params:
       if param[0] in forbidden:
         raise BadParamException(cls.name, param, 'overrides a class member')
+    #convert enumerated parameters given by string to an internal format
+    new_params = []
+    for param in cls.params:
+      if type(param[1]) is not dict:
+        #leave all other params as they are
+        new_params.append(param)
+      else:
+        p_enum = MuEnum(cls.name, param[0], param[1])
+        new_params.append(
+          (param[0], p_enum) if len(param) == 2 else (param[0], p_enum, param[2])
+        )
+    cls.params = new_params
     #make sure the params' 1-nd elements are callable on a string
     for param in cls.params:
       try:
@@ -98,6 +131,9 @@ class BaseProcessor(object):
         raise BadParamException(cls.name, param, 'is not callable')
       except ValueError:
         #don't care about being unable to actually convert the string
+        pass
+      except UserException:
+        #the same but for user-defined enumerated types
         pass
     #make sure defaults are convertible to given types
     for param in cls.params:
@@ -108,6 +144,8 @@ class BaseProcessor(object):
           raise BadParamException(cls.name, param, 'cannot convert default value')
         except ValueError:
           raise BadParamException(cls.name, param, 'bad default value')
+        except UserException as e:
+          raise e
     #nothing needs to be returned - if this completes, we're good
     cls.isValid = True
 

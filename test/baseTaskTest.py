@@ -162,6 +162,11 @@ class TestParams(unittest.TestCase):
       outputs = ['image']
     self.IOTaskInPlace = IOTaskInPlace
     self.IOTaskInPlace.validateParams()
+    class EnumParamTask(bt.BaseProcessor):
+      modes = {'A': 1, 'B': 2, 'C': 4}
+      params = [('mode', modes, 'A')]
+    self.EnumParamTask = EnumParamTask
+    self.EnumParamTask.validateParams()
   #parameter counting
   def test_notEnoughParams(self):
     with self.assertRaises(bt.ConstructException):
@@ -230,6 +235,16 @@ class TestParams(unittest.TestCase):
     expected_outputs = ['items']
     self.assertEqual(expected_inputs, task.getInputs())
     self.assertEqual(expected_outputs, task.getOutputs())
+  #enumeration type params
+  def test_parseEnum(self):
+    task = self.EnumParamTask(params=['B'])
+    self.assertEqual(task.mode, 2)
+  def test_parseEnumFail(self):
+    with self.assertRaises(bt.UserException):
+      task = self.EnumParamTask(params=['D'])
+  def test_parseEnumDefault(self):
+    task = self.EnumParamTask()
+    self.assertEqual(task.mode, 1)
 
 class TestReduction(unittest.TestCase):
   @classmethod
