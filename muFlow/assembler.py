@@ -33,15 +33,12 @@ class Assembler(object):
     for module in os.listdir(path):
       if os.path.isfile(path + module) and module.endswith('.py'):
         module_names.append( module.split('.')[0] )
-    #import each and extract only the classes that derive from BaseProcessor
+    #import each and extract all the non-base classes that derive from BaseProcessor
     sys.path.append(path)
     for module in module_names:
       tmod = importlib.import_module(module)
       for name, obj in inspect.getmembers(tmod, inspect.isclass):
-        if (issubclass(obj, baseTasks.BaseProcessor) and
-            not obj==baseTasks.BaseProcessor and
-            not obj==baseTasks.BaseParallel and
-            not obj==baseTasks.BaseReducer):
+        if (issubclass(obj, baseTasks.BaseProcessor) and not obj.isBase):
           try:
             if not obj.isValid:
               obj.validateParams()

@@ -1,3 +1,10 @@
+import sys
+
+if sys.version_info < (3,0):
+  from metaClass2 import MetaClass
+else:
+  from metaClass3 import MetaClass
+
 from errors import *
 
 class MuEnum(dict):
@@ -21,7 +28,7 @@ class MuEnum(dict):
       raise UserException(self.taskname, message)
 
 
-class BaseProcessor(object):
+class BaseProcessor(MetaClass):
   #Base class for all tasks. Its class method validates user-defined tasks,
   #its constructor instantiates a task object, parses arguments etc.
   #User tasks shall derive either directly from this class (in this case
@@ -38,6 +45,7 @@ class BaseProcessor(object):
   inputs = []
   outputs = []
   isValid = False
+  isBase = True
 
   def __init__(self, args=[], dest=[], params=[], **kwargs):
     #print(self.name, args, dest, params)
@@ -166,6 +174,7 @@ class BaseProcessor(object):
 class BaseParallel(BaseProcessor):
   #Parallel tasks can only input lists. With multiple inputs, all lists must
   #be the same length.
+  isBase = True
   def __init__(self, args=[], dest=[], params=[], **kwargs):
     super(BaseParallel, self).__init__(args, dest, params, **kwargs)
 
@@ -179,6 +188,7 @@ class BaseReducer(BaseProcessor):
   #a single element.
   inputs = ['item']
   outputs = ['item']
+  isBase = True
 
   @classmethod
   def validateParams(cls):
