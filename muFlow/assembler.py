@@ -156,27 +156,31 @@ class MacroFlow(object):
     self.num_proc = num_proc
     self.deferred = []    #serial reducers to be added after the MicroFlow
   
+  def checkItem(self, item):
+    # if it already is in scope - we're good
+    if item in self.scope.keys():
+      return True
+    # otherwise, look through the parallel tasks - maybe one can produce that item
+    elif len(self.micros) == 0:
+        return False
+    else:
+      for microID, microItems in self.micros:
+        if item in microItems:
+          #kindly ask that task to output it and append it to scope
+          self.tasks[microID].gather(item)
+          self.scope[item] = None
+          return True
+    # if the item has not been found to this point - it does not exist
+    return False
+
   def appendSerial(self, task, isMicro=False):
     #append a serial task to the execution list
     #if a parallel task was added before, its MicroFlow has to be completed
     if self.parallel is not None:
       self.completeParallel()
     #check whether the task's input requirements can be satisfied
-    requests = task.getInputs()
-    for request in requests:
-      found = False
-      #see if any of the parallel tasks can produce that item
-      for micro in self.micros:
-        if request in micro[1]:
-          microFlowTaskID = micro[0]
-          #kindly ask that task to output it
-          self.tasks[microFlowTaskID].gather(request)
-          #and assume it will obey
-          self.scope[request] = None
-          #no need to look through the macro scope
-          found = True
-          break
-      if not found and request not in self.scope.keys():
+    for request in task.getInputs():
+      if not self.checkItem(request):
         raise ConstructException(task.name, 'requests "' + request + '" which is not in scope yet')
     #if it *is* a parallel task being added, mind that it doesn't output anything by default
     #instead, ask it what could it possibly output and keep track of that
@@ -192,7 +196,7 @@ class MacroFlow(object):
   def appendParallel(self, task, isReducer=False):
     if self.parallel is None:
       #we're only starting to construct a parallelized task set
-      self.parallel = MicroFlow(macro_scope=self.scope,
+      self.parallel = MicroFlow(parent=self,
                                 num_proc=self.num_proc,
                                 debug=self.debug
       )
@@ -254,13 +258,13 @@ class MacroFlow(object):
     return self.scope
 
 class MicroFlow(object):
-  def __init__(self, macro_scope, num_proc=0, debug=False):
+  def __init__(self, parent, num_proc=0, debug=False):
     self.name  = 'MicroFlow'
     self.debug = debug
     self.tasks = []
+    self.macro = parent
     self.reducers = []
     self.gathered = []
-    self.macro_scope = macro_scope
     self.micro_scope = set()  #just for building phase
     self.map_requests = []  #those items aren't produced by either of the local tasks
     self.num_proc = num_proc if num_proc > 0 else mp.cpu_count()
@@ -278,13 +282,17 @@ class MicroFlow(object):
   
   def append(self, task, isReducer=False):
     requests = task.getInputs()
+    #check if the input requirements are satisfied
     for request in requests:
-      if request not in self.micro_scope:
-        #if the task requests an item that is not in the local scope, it might be in the macro
-        if request in self.macro_scope.keys():
-          self.map_requests.append(request)
-        else:
-          raise ConstructException(task.name, 'requests "' + request + '" which is not in scope yet')
+      #best case - another parallel task in this MicroFlow produces it
+      if request in self.micro_scope:
+        continue
+      #otherwise - ask the parent MacroFlow
+      if self.macro.checkItem(request):
+        self.map_requests.append(request)
+        continue
+      #if not found - we have a problem
+        raise ConstructException(task.name, 'requests "' + request + '" which is not in scope yet')
     for output in task.getOutputs():
       self.micro_scope.add(output)
     self.tasks.append(task)

@@ -82,12 +82,13 @@ class TestMicroFlow(unittest.TestCase):
     pTask = TaskParallelSetupTest()
     test_data = [1, 2, 1, 3, 1]
     expected  = [2, 4, 2, 6, 2]
-    scope = {'items': test_data}
-    uFlow = asm.MicroFlow(scope)
+    parent = asm.MacroFlow() # dummy MacroFlow
+    parent.scope = {'items': test_data}
+    uFlow = asm.MicroFlow(parent)
     uFlow.append(pTask)
     uFlow.gather('items')
     uFlow.setup()
-    result = uFlow.action(scope['items'])
+    result = uFlow.action(parent.scope['items'])
     self.assertEqual(result, expected)
   def test_parallelSimple(self):
     class TaskParallelSimple(bt.BaseParallel):
@@ -98,12 +99,13 @@ class TestMicroFlow(unittest.TestCase):
     pTask = TaskParallelSimple()
     test_data = [1, 2, 4, 6, 9]
     expected  = [2, 3, 5, 7, 10]
-    scope = {'items': test_data}
-    uFlow = asm.MicroFlow(scope)
+    parent = asm.MacroFlow() # dummy MacroFlow
+    parent.scope = {'items': test_data}
+    uFlow = asm.MicroFlow(parent)
     uFlow.append(pTask)
     uFlow.gather('items')
     uFlow.setup()
-    result = uFlow.action(scope['items'])
+    result = uFlow.action(parent.scope['items'])
     self.assertEqual(result, expected)
   def test_parallelFlow(self):
     class TaskIncrement(bt.BaseParallel):
@@ -123,14 +125,15 @@ class TestMicroFlow(unittest.TestCase):
         return x * y
     test_data = [1, 2, 4, 6]
     expected  = [0, 3, 15, 35]
-    scope = {'items': test_data}
-    uFlow = asm.MicroFlow(scope)
+    parent = asm.MacroFlow() # dummy MacroFlow
+    parent.scope = {'items': test_data}
+    uFlow = asm.MicroFlow(parent)
     uFlow.append(TaskIncrement())
     uFlow.append(TaskDecrement())
     uFlow.append(TaskMultiply())
     uFlow.gather('items')
     uFlow.setup()
-    result = uFlow.action(scope['items'])
+    result = uFlow.action(parent.scope['items'])
     self.assertEqual(result, expected)
 
 class TestAssemblerParallel(unittest.TestCase):
